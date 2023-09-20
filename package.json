@@ -1,26 +1,10 @@
 {
-  "name": "makemail",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "makemail-man",
+  "private": true,
   "scripts": {
-    "build": "lerna run build",
-    "lint": "eslint '**/*.{js,ts}'",
-    "lint:fix": "eslint '**/*.{js,ts}' --fix",
-    "prettier": "prettier --write \"packages/**/{src,bin}/**/*.?(js|json)\"",
+    "compile": "tsc -b tsconfig.build.json",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/benhonda/makemail.git"
-  },
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/benhonda/makemail/issues"
-  },
-  "homepage": "https://github.com/benhonda/makemail#readme",
-  "dependencies": {},
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.7.2",
     "@typescript-eslint/parser": "^6.7.2",
