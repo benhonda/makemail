@@ -1,0 +1,40 @@
+{
+  "name": "makemail",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "bin": {
+    "makemail": "./bin/index.js"
+  },
+  "scripts": {
+    "build": "npm run tsc && npm run chmod",
+    "tsc": "tsc",
+    "chmod": "chmod u+x ./bin/index.js",
+    "lint": "eslint '**/*.{js,ts}'",
+    "lint:fix": "eslint '**/*.{js,ts}' --fix",
+    "prettier": "prettier --write 'src/**/*.{js,ts}'",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/benhonda/makemail.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/benhonda/makemail/issues"
+  },
+  "homepage": "https://github.com/benhonda/makemail#readme",
+  "dependencies": {
+    "@types/node": "^20.6.3",
+    "typescript": "^5.2.2"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.7.2",
+    "@typescript-eslint/parser": "^6.7.2",
+    "eslint": "^8.49.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "prettier": "^3.0.3"
+  }
+}
