@@ -1,0 +1,30 @@
+{
+  "name": "makemail-cli",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "bin": {
+    "makemail-cli": "./bin/index.js"
+  },
+  "dependencies": {
+    "@types/node": "^20.6.3",
+    "typescript": "^5.2.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "build": "npm run tsc && npm run chmod",
+    "tsc": "tsc",
+    "chmod": "chmod u+x ./bin/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/benhonda/makemail.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/benhonda/makemail/issues"
+  },
+  "homepage": "https://github.com/benhonda/makemail#readme"
+}
