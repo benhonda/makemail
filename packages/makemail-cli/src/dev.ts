@@ -43,59 +43,74 @@ async function compile(inputFile: string, config: CLIConfig) {
   console.log(chalk.green(`${inputFile} -> ${outputFile} - file compiled successfully.`));
 }
 
+async function compileAsset(file: string, config: CLIConfig) {
+  console.log(chalk.yellow("Copying assets..."));
+  // get the last path segment from config.dirs.assets
+  const assetRootDir = path.basename(config.dirs.assets); // usually 'assets'
+
+  // get everything after the assets directory (including the assets directory)
+  const assetPath = file.replace(config.dirs.assets, assetRootDir);
+
+  // create the output directory
+  const outputFile = `${config.dirs.output}/${assetPath}`;
+
+  // this makes any nested directories that don't exist
+  await $`mkdir -p ${path.dirname(outputFile)}`;
+
+  // copy the file
+  await $`cp  ${file} ${outputFile}`;
+}
+
 export default async function (config: CLIConfig) {
-  awesome();
   /**
-   * Setup watch
+   * Setup
    */
+  const isWatch = config.watch.length > 0;
+  const isRead = config.read.length > 0;
+  const defaultGlobPaths = [`${config.dirs.templates}/**/*.mjml`, `${config.dirs.assets}/**/*`];
 
-  if (config.watch.length > 0) {
-    within(async function () {
-      console.log(chalk.yellow("Configuring watch..."));
-      for (const globPath of config.watch) {
-        const watcher = watch(globPath, { ignoreInitial: true });
+  const globPaths = isWatch ? config.watch : isRead ? config.read : defaultGlobPaths;
 
-        watcher.on("ready", async () => {
-          console.log("Initial scan complete. Ready for changes");
+  for (let globPath of globPaths) {
+    globPath = await getGlobPath(config, globPath);
 
-          const files = await glob(`${config.dirs.templates}/**/*.mjml`);
+    if (isWatch) {
+      // WATCH
+      const watcher = watch(globPath, { ignoreInitial: true });
 
-          // compile all files
-          files.forEach(async file => {
-            await compile(file, config);
-          });
+      watcher.on("ready", async () => {
+        console.log("Initial scan complete. Ready for changes");
+
+        const files = await glob(globPath);
+
+        // compile all files
+        files.forEach(async path => {
+          await compileFile(config, path);
         });
+      });
 
-        watcher.on("add", async path => {
-          console.log(`File ${path} has been added`);
+      watcher.on("add", async path => {
+        console.log(`File ${path} has been added`);
 
-          await compile(path, config);
-        });
+        // check if path is in assets
+        await compileFile(config, path);
+      });
 
-        watcher.on("change", async path => {
-          console.log(`File ${path} has been changed`);
+      watcher.on("change", async path => {
+        console.log(`File ${path} has been changed`);
 
-          await compile(path, config);
-        });
-      }
+        await compileFile(config, path);
+      });
+    } else {
+      // READ
+      // do everything once
+      const files = await glob(globPath);
 
-      // const watcher = watch(`${config.dirs.in}/**/*.mjml`, {
-      //   ignoreInitial: true,
-      // });
-
-      // const imageWatcher = watch(`${config.dirs.assets}/**/*.{jpg,jpeg,png,gif}`, {
-      //   ignoreInitial: true,
-      // });
-
-      // imageWatcher.on("add", async (path) => {
-      //   console.log(`File ${path} has been added`);
-      //   await copyAssets(config);
-      // });
-    });
-  } else {
-    console.log(chalk.yellow("No watch configured."));
-
-    // do everything once
+      // compile all files
+      files.forEach(async path => {
+        await compileFile(config, path);
+      });
+    }
   }
 
   /**
@@ -109,4 +124,23 @@ export default async function (config: CLIConfig) {
       config.browserSync.open ? "" : "--no-open"
     }`;
   }
+}
+
+async function compileFile(config: CLIConfig, path: string) {
+  // check if path is in assets
+  if (path.startsWith(config.dirs.assets)) {
+    // copy assets
+    await compileAsset(path, config);
+  } else {
+    await compile(path, config);
+  }
+}
+
+async function getGlobPath(config: CLIConfig, globPath: string) {
+  // if globPath is a key in config.dirs, then replace it with the value
+  if (Object.keys(config.dirs).includes(globPath)) {
+    return `${config.dirs[globPath as keyof CLIConfig["dirs"]]}/**/*`;
+  }
+
+  return globPath;
 }

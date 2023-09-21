@@ -6,7 +6,7 @@ import handlebars from "handlebars";
  * Handlebars
  *
  */
-export async function compileHandlebars(inputFile, context = {}, options = {}) {
+export async function compileHandlebars(inputFile, context = { locales: ["en"], locale: "en" }, options = {}) {
     // get the file contents
     const contents = await readFile(inputFile, "utf8");
     // get front matter context
@@ -14,11 +14,15 @@ export async function compileHandlebars(inputFile, context = {}, options = {}) {
     // merge the context from the front matter with the context passed in
     Object.assign(context, frontMatterContext.context);
     // register i18n helper
-    handlebars.registerHelper("t", function (...locales) {
-        for (const locale of locales) {
-            // the order is defined in the yaml front matter
-            // TODO: or the global context
+    handlebars.registerHelper("t", function (...text) {
+        // find with text index is the locale
+        const indexOfLocale = context.locales.indexOf(context.locale);
+        // find the locale from context in locales
+        // const loc = locales.find(locale => context.locale == locale);
+        if (indexOfLocale > -1 && text[indexOfLocale]) {
+            return text[indexOfLocale];
         }
+        return text[0];
     });
     //  compile the template
     const template = handlebars.compile(contents);

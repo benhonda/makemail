@@ -1,10 +1,12 @@
 export type Config = {
     _defaultIndexFile: string;
+    preview?: string;
     dirs: {
         templates: string;
         assets: string;
         output: string;
     };
+    read: string[];
     watch: string[];
     browserSync?: {
         open: boolean;
@@ -17,4 +19,9 @@ export type Config = {
             [key: string]: any;
         };
     };
+    s3?: {
+        bucket: string;
+        region?: string;
+    };
+    locales?: string[];
 };

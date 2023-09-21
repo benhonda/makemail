@@ -1,25 +1,34 @@
 #!/usr/bin/env node
 import { $, chalk, fs, within } from "zx";
+import "dotenv/config";
 import { Command } from "commander";
 import dev from "./dev.js";
+import preview from "./preview.js";
 const DEFAULT_CONFIG_NAME = "makemail.json";
 const DEFAULT_CONFIG = {
+    defaultFileName: "index.html",
+    emailUrlTagName: "_emailUrl",
     _defaultIndexFile: "_config.html",
     dirs: {
         templates: "example/src/templates",
         assets: "example/src/assets",
         output: "example/dist",
     },
-    watch: ["example/src/templates/**/*.mjml"],
+    read: ["example/src/templates/**/*.mjml", "assets"],
+    watch: ["example/src/templates/**/*.mjml", "assets"],
     browserSync: {
         open: false,
     },
     files: [],
+    s3: {
+        bucket: "mjml-preview",
+        region: "ca-central-1",
+    },
 };
 console.log("Hello from my-script👋");
 const program = new Command();
 program.name("makemail").description("CLI for makemail").version("0.0.1");
-program.option("-p, --preview", "preview email");
+program.option("-p, --preview <file>", "preview email");
 program.option("-d, --dev", "development mode");
 program.option("-w, --watch [globs...]", "watch for changes");
 program.option("-c, --config <file>", "config file");
@@ -29,7 +38,7 @@ program.option("-o, --output <dir>", "overwrite dirs.output");
 program.option("-b, --browser-sync <command>", "browser-sync command");
 await program.parse(process.argv);
 const opts = program.opts();
-const mode = opts.preview ? "preview" : "dev";
+let mode = "dev";
 /**
  * Build config
  */
@@ -55,6 +64,10 @@ const config = await within(async function () {
     };
     const config = await definedConfig();
     // overwrite config with options
+    if (opts.preview) {
+        config.preview = opts.preview;
+        mode = "preview";
+    }
     if (opts.templates) {
         config.dirs.templates = opts.templates;
     }
@@ -83,8 +96,10 @@ await Object.keys(config.dirs).forEach(key => {
 console.log(config.watch);
 if (mode === "preview") {
     console.log("preview mode!");
+    preview(config);
 }
 else {
+    console.log("dev mode!");
     dev(config);
 }
 //# sourceMappingURL=cli.js.map

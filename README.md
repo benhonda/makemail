@@ -2,6 +2,23 @@
 
 > This doc is a WIP. It's more here as a "what could be" for now...
 
+#### To-do:
+
+- [x] prettier/eslint config for consistency
+- [ ] Test with not-exact image sizes
+- [ ] Docker
+
+#### Roadmap:
+
+- [ ] prod/preview script
+  - [x] upload html file to s3 + replace URLS in template
+  - [x] upload assets to S3 + replace URLS in template
+  - [ ] resize assets
+  - [ ] with flag, upload html to EmailOnAcid/Litmus + return URL to test on all screens (pending API approval for testing)
+  - [ ] stdout an `open` command to locate the final html file in Finder
+- [x] parse yaml frontmatter in templates for handlebars/mjml config + context
+- [ ] i18n config
+
 ## Installation
 
 ```bash
