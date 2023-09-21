@@ -8,19 +8,16 @@
     "makemail-cli": "bin/cli.js"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.414.0",
-    "@types/node": "^20.6.3",
     "@makemail/core": "^1.0.0",
-    "browser-sync": "^2.29.3",
-    "chokidar": "^3.5.3",
+    "@types/node": "^20.6.3",
     "commander": "^11.0.0",
     "dotenv": "^16.3.1",
-    "gray-matter": "^4.0.3",
-    "handlebars": "^4.7.8",
     "mjml": "^4.14.1",
-    "node-html-parser": "^6.1.10",
-    "typescript": "^5.2.2",
     "zx": "^7.2.3"
+  },
+  "devDependencies": {
+    "@types/mjml": "^4.7.1",
+    "typescript": "^5.2.2"
   },
   "scripts": {
     "compile": "tsc",

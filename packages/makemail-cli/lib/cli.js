@@ -10,16 +10,12 @@ const DEFAULT_CONFIG = {
         assets: "example/src/assets",
         output: "example/dist",
     },
-    watch: [],
+    watch: ["example/src/templates/**/*.mjml"],
     browserSync: {
-        open: true,
+        open: false,
     },
+    files: [],
 };
-console.log("Hello from my-script👋");
-console.log("Hello from my-script👋");
-console.log("Hello from my-script👋");
-console.log("Hello from my-script👋");
-console.log("Hello from my-script👋");
 console.log("Hello from my-script👋");
 const program = new Command();
 program.name("makemail").description("CLI for makemail").version("0.0.1");
@@ -84,6 +80,7 @@ const config = await within(async function () {
 await Object.keys(config.dirs).forEach(key => {
     $ `mkdir -p ${config.dirs[key]}`;
 });
+console.log(config.watch);
 if (mode === "preview") {
     console.log("preview mode!");
 }

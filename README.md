@@ -1,7 +1,5 @@
 # makemail
 
-## Introduction
-
 > This doc is a WIP. It's more here as a "what could be" for now...
 
 ## Installation
@@ -32,4 +30,5 @@ const html = compileMjml(`<mjml></mjml>`, options)
 
 Special shoutouts:
 
-- CLI created from [this tutorial](https://dawchihliou.github.io/articles/writing-your-own-typescript-cli)
+- Repo set up with help from [npm-ts-workspaces-example](https://github.com/Quramy/npm-ts-workspaces-example)
+- CLI inspired by [this tutorial](https://dawchihliou.github.io/articles/writing-your-own-typescript-cli)

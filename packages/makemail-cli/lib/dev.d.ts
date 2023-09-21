@@ -1,2 +1,2 @@
-import { Config } from "./@types/types.js";
-export default function (config: Config): Promise<void>;
+import { CLIConfig } from "./@types/types.js";
+export default function (config: CLIConfig): Promise<void>;

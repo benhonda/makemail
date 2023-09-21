@@ -1,6 +1,35 @@
-import { $, chalk, within } from "zx";
+import { $, chalk, glob, path, within } from "zx";
 import { watch } from "chokidar";
-import { awesome } from "@makemail/core";
+import mjml2Html from "mjml";
+import { awesome, compileHandlebars } from "@makemail/core";
+import { writeFile } from "fs/promises";
+async function compile(inputFile, config) {
+    // if file is the defaultFileName, then attach files the necessary files config
+    if (inputFile == `${config.dirs.templates}/${config._defaultIndexFile.replace(".html", ".mjml")}`) {
+        const files = await glob(`${config.dirs.output}/**/*.html`);
+        config.files = files.map(file => file.replace(`${config.dirs.output}/`, ""));
+    }
+    // compile the handlebars template
+    const templateOutput = await compileHandlebars(inputFile, {
+        files: config.files,
+        ...config.handlebars?.context,
+    }, {
+        ...config.handlebars?.options,
+    });
+    // compile the mjml template
+    const htmlOutput = await mjml2Html(templateOutput, {
+        // minify: true,
+        keepComments: false,
+    });
+    // write the output file
+    const outputFile = inputFile.replace(config.dirs.templates, config.dirs.output).replace(".mjml", ".html");
+    // const outputFilePath = await writeHTMLToFile(config, outputFile, htmlOutput.html);
+    const parents = path.dirname(outputFile);
+    // this makes any nested directories that don't exist
+    await $ `mkdir -p ${parents}`;
+    await writeFile(outputFile, htmlOutput.html);
+    console.log(chalk.green(`${inputFile} -> ${outputFile} - file compiled successfully.`));
+}
 export default async function (config) {
     awesome();
     /**
@@ -9,16 +38,23 @@ export default async function (config) {
     if (config.watch.length > 0) {
         within(async function () {
             console.log(chalk.yellow("Configuring watch..."));
-            for (const glob of config.watch) {
-                const watcher = watch(glob, { ignoreInitial: true });
+            for (const globPath of config.watch) {
+                const watcher = watch(globPath, { ignoreInitial: true });
                 watcher.on("ready", async () => {
                     console.log("Initial scan complete. Ready for changes");
+                    const files = await glob(`${config.dirs.templates}/**/*.mjml`);
+                    // compile all files
+                    files.forEach(async (file) => {
+                        await compile(file, config);
+                    });
                 });
-                watcher.on("add", path => {
+                watcher.on("add", async (path) => {
                     console.log(`File ${path} has been added`);
+                    await compile(path, config);
                 });
                 watcher.on("change", async (path) => {
                     console.log(`File ${path} has been changed`);
+                    await compile(path, config);
                 });
             }
             // const watcher = watch(`${config.dirs.in}/**/*.mjml`, {
@@ -26,24 +62,6 @@ export default async function (config) {
             // });
             // const imageWatcher = watch(`${config.dirs.assets}/**/*.{jpg,jpeg,png,gif}`, {
             //   ignoreInitial: true,
-            // });
-            // watcher.on("ready", async () => {
-            //   console.log("Initial scan complete. Ready for changes");
-            //   const { stdout } = await $`find ${config.dirs.in} -type f -name "*.mjml"`;
-            //   const files = stdout.split("\n").filter((file) => file !== "");
-            //   // copy assets
-            //   await copyAssets(config);
-            //   // compile all files
-            //   files.forEach(async (file) => {
-            //     await compileFile(config, file);
-            //   });
-            // });
-            // watcher.on("add", (path) => {
-            //   console.log(`File ${path} has been added`);
-            // });
-            // watcher.on("change", async (path) => {
-            //   console.log(`File ${path} has been changed`);
-            //   await compileFile(config, path);
             // });
             // imageWatcher.on("add", async (path) => {
             //   console.log(`File ${path} has been added`);

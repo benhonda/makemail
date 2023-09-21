@@ -2,28 +2,24 @@
 
 import { $, argv, chalk, fs, within } from "zx";
 import { Command } from "commander";
-import { Config } from "./@types/types.js";
 import dev from "./dev.js";
+import { CLIConfig } from "./@types/types.js";
 
 const DEFAULT_CONFIG_NAME = "makemail.json";
-const DEFAULT_CONFIG: Config = {
+const DEFAULT_CONFIG: CLIConfig = {
   _defaultIndexFile: "_config.html",
   dirs: {
     templates: "example/src/templates",
     assets: "example/src/assets",
     output: "example/dist",
   },
-  watch: [],
+  watch: ["example/src/templates/**/*.mjml"],
   browserSync: {
-    open: true,
+    open: false,
   },
+  files: [],
 };
 
-console.log("Hello from my-script👋");
-console.log("Hello from my-script👋");
-console.log("Hello from my-script👋");
-console.log("Hello from my-script👋");
-console.log("Hello from my-script👋");
 console.log("Hello from my-script👋");
 
 const program = new Command();
@@ -48,10 +44,10 @@ const mode = opts.preview ? "preview" : "dev";
 /**
  * Build config
  */
-const config: Config = await within(async function () {
+const config: CLIConfig = await within(async function () {
   console.log(chalk.yellow("Building config..."));
 
-  const definedConfig: () => Promise<Config> = async () => {
+  const definedConfig: () => Promise<CLIConfig> = async () => {
     // if options.config, load config from file and merge with default config
     if (await fs.exists(opts.config)) {
       return {
@@ -104,8 +100,10 @@ const config: Config = await within(async function () {
  * make directories if they don't exist
  */
 await Object.keys(config.dirs).forEach(key => {
-  $`mkdir -p ${config.dirs[key as keyof Config["dirs"]]}`;
+  $`mkdir -p ${config.dirs[key as keyof CLIConfig["dirs"]]}`;
 });
+
+console.log(config.watch);
 
 if (mode === "preview") {
   console.log("preview mode!");

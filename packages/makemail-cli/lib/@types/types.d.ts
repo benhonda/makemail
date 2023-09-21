@@ -1,12 +1,4 @@
-export type Config = {
-    _defaultIndexFile: string;
-    dirs: {
-        templates: string;
-        assets: string;
-        output: string;
-    };
-    watch: string[];
-    browserSync?: {
-        open: boolean;
-    };
-};
+import { Config } from "@makemail/core";
+export type CLIConfig = {
+    files: string[];
+} & Config;
