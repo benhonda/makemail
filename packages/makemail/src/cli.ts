@@ -12,6 +12,8 @@ import handlebars from "handlebars";
 import { welcomeMjml } from "./helpers/_welcome.js";
 import _ from "lodash";
 
+$.verbose = false;
+
 /**
  *
  * Default configuration settings
@@ -23,7 +25,7 @@ export const DEFAULT_LOCALE = "en";
 export const _defaultSettings: Settings = {
   srcDir: "src",
   outDir: "dist",
-  watch: true,
+  watch: undefined,
   locales: [DEFAULT_LOCALE],
 
   options: {
@@ -31,11 +33,7 @@ export const _defaultSettings: Settings = {
     omitDefaultLocaleFromFileName: true,
   },
 
-  browserSync: {
-    startPath: "__.html",
-    open: true,
-    watch: true,
-  },
+  browserSync: undefined,
 };
 
 // THESE ARE MY TESTING SETTINGS
@@ -45,6 +43,12 @@ export const defaultSettings: Settings = {
   outDir: "example/dist",
   watch: true,
   locales: [DEFAULT_LOCALE],
+
+  // browserSync: {
+  //   startPath: "__.html",
+  //   open: true,
+  //   watch: undefined,
+  // },
 };
 /**
  *
@@ -53,26 +57,85 @@ export const defaultSettings: Settings = {
  *
  */
 
-$.verbose = false;
-
 const program = new Command();
 
 program.name("makemail").description("CLI for makemail").version("0.0.1");
-program.option("-p, --preview <file>", "preview email");
-program.option("-d, --dev", "development mode");
-program.option("-w, --watch [glob]", "watch for changes");
-program.option("-c, --config <file>", "config file");
-program.option("-t, --templates <dir>", "overwrite dirs.templates");
-program.option("-a, --assets <dir>", "overwrite dirs.assets");
-program.option("-o, --output <dir>", "overwrite dirs.output");
-program.option("-b, --browser-sync <command>", "browser-sync command");
+program.option("-w, --watch", "watch for changes");
+program.option("-S, --settings <file>", "set settings file");
+program.option("-s, --src <dir>", "set src dir");
+program.option("-i, --input <files>", "comma separated list of input file globs");
+program.option("-o, --output <dir>", "set output dir");
+// program.option("-b, --browser-sync <command>", "browser-sync command");
 
-program
+/**
+ *
+ * 'Compile' command
+ *
+ */
+const compile = program
   .command("compile")
+  .alias("c")
+  .alias("build")
+  .alias("b")
+  .description("compile templates to html");
+
+/**
+ *
+ * 'compile dev' command
+ *
+ */
+compile
+  .command("dev", { isDefault: true })
   .description("compile templates to html")
   .argument("[glob]", "comma separated list of globs", glob => glob.split(","))
   .action(async (glob: string[], options) => {
-    // options
+    const settings = await compileSettings(options);
+
+    if (glob && glob.length > 0) {
+      // overwrite settings with options
+      settings.inputFiles = glob;
+    }
+
+    await maybeDeleteOutDir(settings);
+    await makeNecessaryDirs(settings);
+
+    const runtime = await compileRuntimeConfig(settings);
+
+    if (settings.watch || _.isUndefined(settings.watch)) {
+      // watch files (by default)
+      watchFiles(settings, runtime);
+    } else {
+      // compile all files once
+      for (const inputFilePath of Object.keys(runtime.files)) {
+        const files = runtime.files[inputFilePath];
+        await compileFiles(settings, files);
+      }
+    }
+
+    // compile the welcome page
+    await compileWelcomePage(settings, runtime);
+
+    // browser-sync (by default)
+    if (settings.browserSync || _.isUndefined(settings.browserSync)) {
+      browserSync.init({
+        server: settings.outDir,
+        watch: settings.browserSync?.watch || _.isUndefined(settings.browserSync?.watch), // watch for changes as long as the user hasn't specified not to
+        ...settings.browserSync,
+        // TODO: options like --browser-sync "start --server example/dist"
+      });
+    }
+  });
+
+/**
+ *
+ * 'compile prod' command
+ *
+ */
+compile
+  .command("prod")
+  .description("compile templates to html, minify, inline css, etc.")
+  .argument("[glob]", "comma separated list of globs", glob => glob.split(","))
+  .action(async (glob: string[], options) => {
     const settings = await compileSettings(options);
 
     if (glob && glob.length > 0) {
@@ -86,10 +149,10 @@ program
     const runtime = await compileRuntimeConfig(settings);
 
     if (settings.watch) {
-      // watch for changes
+      // watch for changes only if the user has specified to
       watchFiles(settings, runtime);
     } else {
-      // compile all files
+      // compile all files once
       for (const inputFilePath of Object.keys(runtime.files)) {
         const files = runtime.files[inputFilePath];
         await compileFiles(settings, files);
@@ -103,14 +166,32 @@ program
     if (settings.browserSync) {
       browserSync.init({
         server: settings.outDir,
+        watch: settings.browserSync.watch, // watch for changes only if the user has specified to
         ...settings.browserSync,
         // TODO: options like --browser-sync "start --server example/dist"
       });
     }
   });
 
+/**
+ *
+ * run the program
+ *
+ */
 await program.parseAsync(process.argv);
 
+/**
+ *
+ * Functions
+ *
+ */
+
+/**
+ * Compile the welcome page
+ *
+ * @param settings
+ * @param runtime
+ */
 async function compileWelcomePage(settings: Settings, runtime: RunTimeConfig) {
   const files = _.flatten(Object.values(runtime.files).map(files => files.map(file => `${file.outputPath}`)))
     .filter(file => path.extname(file) === ".html")
@@ -148,17 +229,33 @@ async function compileWelcomePage(settings: Settings, runtime: RunTimeConfig) {
   await compileFiles(settings, [welcomeFile]);
 }
 
+/**
+ * Delete the output directory if the user has specified to do so
+ *
+ * @param settings
+ */
 function maybeDeleteOutDir(settings: Settings) {
   if (settings.options?.deleteOutDir) {
     $`rm -rf ${settings.outDir}`;
   }
 }
 
+/**
+ * Make the necessary directories
+ *
+ * @param settings
+ */
 function makeNecessaryDirs(settings: Settings) {
   $`mkdir -p ${settings.srcDir}`;
   $`mkdir -p ${settings.outDir}`;
 }
 
+/**
+ * Watch the files for changes
+ *
+ * @param settings
+ * @param runtime
+ */
 async function watchFiles(settings: Settings, runtime: RunTimeConfig) {
   const watcher = watch(Object.keys(runtime.files), { ignoreInitial: true });
 
@@ -180,6 +277,12 @@ async function watchFiles(settings: Settings, runtime: RunTimeConfig) {
   });
 }
 
+/**
+ * Compile the files
+ *
+ * @param settings
+ * @param files
+ */
 async function compileFiles(settings: Settings, files: RunTimeFile[]) {
   // files is plural because there can be multiple output files
   for (const file of files) {
@@ -213,6 +316,13 @@ async function compileFiles(settings: Settings, files: RunTimeFile[]) {
   }
 }
 
+/**
+ * Compile the handlebars template
+ *
+ * @param settings
+ * @param file
+ * @returns
+ */
 async function compileHandlebars(settings: Settings, file: RunTimeFile) {
   // get the file contents
   const contents = await fs.readFile(file.inputPath, "utf8");
