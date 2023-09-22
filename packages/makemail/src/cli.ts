@@ -1,135 +1,240 @@
 #!/usr/bin/env node
 
-import { $, argv, chalk, fs, spinner, within } from "zx";
+import { $, argv, chalk, fs, path, spinner, within } from "zx";
 import "dotenv/config";
-import { Command } from "commander";
-import dev from "./dev.js";
-import { CLIConfig } from "./@types/types.js";
-import preview from "./preview.js";
+import { Argument, Command } from "commander";
+import { RunTimeConfig, RunTimeFile, Settings } from "./@types/types.js";
+import { compileRuntimeConfig, compileSettings } from "./helpers/commander.js";
+import browserSync from "browser-sync";
+import { watch } from "chokidar";
+import mjml2Html from "mjml";
+import handlebars from "handlebars";
+import { welcomeMjml } from "./helpers/_welcome.js";
+import _ from "lodash";
+
+/**
+ *
+ * Default configuration settings
+ *
+ */
+export const DEFAULT_LOCALE = "en";
+
+// TODO: switch this to be defaultSettings
+export const _defaultSettings: Settings = {
+  srcDir: "src",
+  outDir: "dist",
+  watch: true,
+  locales: [DEFAULT_LOCALE],
+
+  options: {
+    deleteOutDir: true,
+    omitDefaultLocaleFromFileName: true,
+  },
+
+  browserSync: {
+    startPath: "__.html",
+    open: true,
+    watch: true,
+  },
+};
+
+// THESE ARE MY TESTING SETTINGS
+export const defaultSettings: Settings = {
+  ..._defaultSettings,
+  srcDir: "example/src",
+  outDir: "example/dist",
+  watch: true,
+  locales: [DEFAULT_LOCALE],
+};
+/**
+ *
+ *
+ *
+ *
+ */
 
 $.verbose = false;
-
-const DEFAULT_CONFIG_NAME = "makemail.json";
-const DEFAULT_CONFIG: CLIConfig = {
-  locales: ["en"],
-  ignoreDefaultLocale: true,
-  defaultFileName: "index.html",
-  emailUrlTagName: "_emailUrl",
-  _defaultIndexFile: "example/src/templates/index.mjml",
-  dirs: {
-    templates: "example/src/templates",
-    assets: "example/src/assets",
-    output: "example/dist",
-  },
-  read: ["example/src/templates/**/*.mjml", "assets"],
-  watch: ["example/src/templates/**/*.mjml", "assets"],
-  // browserSync: {
-  //   open: false,
-  // },
-  files: [],
-  s3: {
-    bucket: "mjml-preview",
-    region: "ca-central-1",
-  },
-  overwriteOutputDir: true,
-};
 
 const program = new Command();
 
 program.name("makemail").description("CLI for makemail").version("0.0.1");
-
 program.option("-p, --preview <file>", "preview email");
 program.option("-d, --dev", "development mode");
-
-program.option("-w, --watch [globs...]", "watch for changes");
+program.option("-w, --watch [glob]", "watch for changes");
 program.option("-c, --config <file>", "config file");
 program.option("-t, --templates <dir>", "overwrite dirs.templates");
 program.option("-a, --assets <dir>", "overwrite dirs.assets");
 program.option("-o, --output <dir>", "overwrite dirs.output");
 program.option("-b, --browser-sync <command>", "browser-sync command");
 
-await program.parse(process.argv);
+program
+  .command("compile")
+  .description("compile templates to html")
+  .argument("[glob]", "comma separated list of globs", glob => glob.split(","))
+  .action(async (glob: string[], options) => {
+    // options
+    const settings = await compileSettings(options);
 
-const opts = program.opts();
-let mode = "dev";
-
-/**
- * Build config
- */
-const config: CLIConfig = await within(async function () {
-  const definedConfig: () => Promise<CLIConfig> = async () => {
-    // if options.config, load config from file and merge with default config
-    if (await fs.exists(opts.config)) {
-      return {
-        ...DEFAULT_CONFIG,
-        ...JSON.parse(await fs.readFile(opts.config, "utf8")),
-      };
+    if (glob && glob.length > 0) {
+      // overwrite settings with options
+      settings.inputFiles = glob;
     }
 
-    // else, look for makemail.config.json in the root directory and merge with default config
-    if (await fs.exists(DEFAULT_CONFIG_NAME)) {
-      return {
-        ...DEFAULT_CONFIG,
-        ...JSON.parse(await fs.readFile(DEFAULT_CONFIG_NAME, "utf8")),
-      };
+    await maybeDeleteOutDir(settings);
+    await makeNecessaryDirs(settings);
+
+    const runtime = await compileRuntimeConfig(settings);
+
+    if (settings.watch) {
+      // watch for changes
+      watchFiles(settings, runtime);
+    } else {
+      // compile all files
+      for (const inputFilePath of Object.keys(runtime.files)) {
+        const files = runtime.files[inputFilePath];
+        await compileFiles(settings, files);
+      }
     }
 
-    // else, just use default config
-    return DEFAULT_CONFIG;
+    // compile the welcome page
+    await compileWelcomePage(settings, runtime);
+
+    // browser-sync
+    if (settings.browserSync) {
+      browserSync.init({
+        server: settings.outDir,
+        ...settings.browserSync,
+        // TODO: options like --browser-sync "start --server example/dist"
+      });
+    }
+  });
+
+await program.parseAsync(process.argv);
+
+async function compileWelcomePage(settings: Settings, runtime: RunTimeConfig) {
+  const files = _.flatten(Object.values(runtime.files).map(files => files.map(file => `${file.outputPath}`)))
+    .filter(file => path.extname(file) === ".html")
+    .map(file => {
+      // TODO: replace this with the actual browser-sync base?
+      return file.replace(settings.outDir, "");
+    });
+
+  // setup the welcome page
+  // create the welcome file
+  const welcomeFileName = "__";
+  const welcomeFile: RunTimeFile = {
+    inputPath: `${settings.srcDir}/${welcomeFileName}.mjml`,
+    inputType: "mjml",
+    outputPath: `${settings.outDir}/${welcomeFileName}.html`,
+    outputType: "html",
+    locale: DEFAULT_LOCALE,
+    handlebars: {
+      context: {
+        files,
+        locales: settings.locales,
+      },
+    },
   };
 
-  const config = await definedConfig();
+  // TODO: it would be nice if we didn't have to copy this to the user's srcDir
 
-  // overwrite config with options
-  if (opts.preview) {
-    config.preview = opts.preview;
-    mode = "preview";
-  }
+  // this makes any nested directories that don't exist
+  await $`mkdir -p ${path.dirname(welcomeFile.inputPath)}`;
 
-  if (opts.templates) {
-    config.dirs.templates = opts.templates;
-  }
+  // create the file and write it
+  await fs.writeFile(welcomeFile.inputPath, welcomeMjml);
 
-  if (opts.assets) {
-    config.dirs.assets = opts.assets;
-  }
-
-  if (opts.output) {
-    config.dirs.output = opts.output;
-  }
-
-  if (opts.watch) {
-    config.watch = opts.watch;
-  }
-
-  if (opts.browserSync) {
-    config.browserSync = {
-      open: opts.browserSync === "no-open" ? false : true,
-    };
-  }
-
-  return config;
-});
-
-/**
- * delete output directory?
- */
-if (config.overwriteOutputDir) {
-  await $`rm -rf ${config.dirs.output}`;
+  // compile the welcome file
+  await compileFiles(settings, [welcomeFile]);
 }
 
-/**
- * make directories if they don't exist
- */
-
-for (const key of Object.keys(config.dirs)) {
-  await $`mkdir -p ${config.dirs[key as keyof CLIConfig["dirs"]]}`;
+function maybeDeleteOutDir(settings: Settings) {
+  if (settings.options?.deleteOutDir) {
+    $`rm -rf ${settings.outDir}`;
+  }
 }
 
-if (mode === "preview") {
-  console.log(chalk.yellow(`Previewing ${config.preview}`));
-  preview(config);
-} else {
-  console.log(chalk.yellow("Starting dev..."));
-  dev(config);
+function makeNecessaryDirs(settings: Settings) {
+  $`mkdir -p ${settings.srcDir}`;
+  $`mkdir -p ${settings.outDir}`;
+}
+
+async function watchFiles(settings: Settings, runtime: RunTimeConfig) {
+  const watcher = watch(Object.keys(runtime.files), { ignoreInitial: true });
+
+  watcher.on("ready", async () => {
+    for (const inputFilePath of Object.keys(runtime.files)) {
+      const files = runtime.files[inputFilePath];
+      await compileFiles(settings, files);
+    }
+  });
+
+  watcher.on("add", async path => {
+    const files = runtime.files[path];
+    await compileFiles(settings, files);
+  });
+
+  watcher.on("change", async path => {
+    const files = runtime.files[path];
+    await compileFiles(settings, files);
+  });
+}
+
+async function compileFiles(settings: Settings, files: RunTimeFile[]) {
+  // files is plural because there can be multiple output files
+  for (const file of files) {
+    // TODO: define supported input types
+    if (["html", "mjml"].includes(file.inputType)) {
+      // compile the handlebars template
+      const templateOutput = await compileHandlebars(settings, file);
+
+      // compile the mjml template
+      const htmlOutput = await mjml2Html(templateOutput, {
+        // minify: true,
+        keepComments: false,
+      });
+
+      // this makes any nested directories that don't exist
+      await $`mkdir -p ${path.dirname(file.outputPath)}`;
+
+      // write the output file
+      await fs.writeFile(file.outputPath, htmlOutput.html);
+
+      console.log(chalk.green(`${file.inputPath} -> ${file.outputPath} - file compiled successfully.`));
+    } else {
+      // just copy the file
+
+      // this makes any nested directories that don't exist
+      await $`mkdir -p ${path.dirname(file.outputPath)}`;
+
+      // copy the file
+      await $`cp ${file.inputPath} ${file.outputPath}`;
+    }
+  }
+}
+
+async function compileHandlebars(settings: Settings, file: RunTimeFile) {
+  // get the file contents
+  const contents = await fs.readFile(file.inputPath, "utf8");
+
+  // register i18n helper
+  handlebars.registerHelper("t", function (...text) {
+    if (!text) {
+      return "";
+    }
+
+    // find with text index is the locale
+    const indexOfLocale = (file.locale && file.locales?.indexOf(file.locale)) || -1;
+
+    if (indexOfLocale > -1 && text[indexOfLocale]) {
+      return text[indexOfLocale];
+    }
+
+    return text[0];
+  });
+
+  //  compile the template
+  const template = handlebars.compile(contents);
+
+  return template(file.handlebars?.context || {}, file.handlebars?.options || {});
 }

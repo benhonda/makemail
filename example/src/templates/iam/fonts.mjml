@@ -1,50 +1,51 @@
 ---
-context:
-  previewText: The quick brown fox jumps over the lazy dog
-  fonts:
-    - family: Playfair Display
-      weight: 400
-      style: normal
-      image: ../../assets/playfair-display-400-normal.png
-    - family: Playfair Display
-      weight: 400
-      style: italic
-    - family: Quicksand
-      weight: 400
-      style: normal
-    - family: Quicksand
-      weight: 400
-      style: italic
-    - family: Oswald
-      weight: 400
-      style: normal
-    - family: Oswald
-      weight: 400
-      style: italic
-    - family: Roboto
-      weight: 400
-      style: normal
-    - family: Roboto
-      weight: 400
-      style: italic
-    - family: Inter
-      weight: 400
-      style: normal
-    - family: Inter
-      weight: 400
-      style: italic
-    - family: Montserrat
-      weight: 400
-      style: normal
-    - family: Montserrat
-      weight: 400
-      style: italic
-    - family: Poppins
-      weight: 400
-      style: normal
-    - family: Poppins
-      weight: 400
-      style: italic
+handlebars:
+  context:
+    previewText: The quick brown fox jumps over the lazy dog
+    fonts:
+      - family: Playfair Display
+        weight: 400
+        style: normal
+        image: ../../assets/playfair-display-400-normal.png
+      - family: Playfair Display
+        weight: 400
+        style: italic
+      - family: Quicksand
+        weight: 400
+        style: normal
+      - family: Quicksand
+        weight: 400
+        style: italic
+      - family: Oswald
+        weight: 400
+        style: normal
+      - family: Oswald
+        weight: 400
+        style: italic
+      - family: Roboto
+        weight: 400
+        style: normal
+      - family: Roboto
+        weight: 400
+        style: italic
+      - family: Inter
+        weight: 400
+        style: normal
+      - family: Inter
+        weight: 400
+        style: italic
+      - family: Montserrat
+        weight: 400
+        style: normal
+      - family: Montserrat
+        weight: 400
+        style: italic
+      - family: Poppins
+        weight: 400
+        style: normal
+      - family: Poppins
+        weight: 400
+        style: italic
 ---
 
 <mjml>

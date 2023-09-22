@@ -2,27 +2,28 @@
 locales:
   - en
   - fr
-context:
-  numbers:
-    - img: ../assets/sada2202/one.png
-      text: Explain how ultrasonography can be used as a screening tool for IBD
-    - img: ../assets/sada2202/two.png
-      text: Describe the utility of ultrasonography in IBD screening/surveillance and its potential impact on Canadian clinical practice
-    - img: ../assets/sada2202/three.png
-      text: Recognise how to successfully integrate ultrasonography into clinical practice
-  heads:
-    - img: ../assets/sada2202/Remo_panaccione.png
-      name: Remo Panaccione, MD
-      pos: MODERATOR
-      text: Gastroenterologist, Foothills Medical Centre; Professor of Medicine & Director of the IBD Unit, University of Calgary
-    - img: ../assets/sada2202/Kerri_novak.jpg
-      name: Kerri Novak, MD
-      pos: SPEAKER
-      text: Gastroenterologist, Foothills Medical Centre; Clinical Associate Professor of Medicine, University of Calgary
-    - img: ../assets/sada2202/Maxime_delisle.png
-      name: Maxime Delisle, MD
-      pos: SPEAKER
-      text: Gastroenterologist, CIUSSS de l’Estrie - Centre hospitalier universitaire de Sherbrooke; Assistant Professor, University of Sherbrooke
+handlebars:
+  context:
+    numbers:
+      - img: ../assets/sada2202/one.png
+        text: Explain how ultrasonography can be used as a screening tool for IBD
+      - img: ../assets/sada2202/two.png
+        text: Describe the utility of ultrasonography in IBD screening/surveillance and its potential impact on Canadian clinical practice
+      - img: ../assets/sada2202/three.png
+        text: Recognise how to successfully integrate ultrasonography into clinical practice
+    heads:
+      - img: ../assets/sada2202/Remo_panaccione.png
+        name: Remo Panaccione, MD
+        pos: MODERATOR
+        text: Gastroenterologist, Foothills Medical Centre; Professor of Medicine & Director of the IBD Unit, University of Calgary
+      - img: ../assets/sada2202/Kerri_novak.jpg
+        name: Kerri Novak, MD
+        pos: SPEAKER
+        text: Gastroenterologist, Foothills Medical Centre; Clinical Associate Professor of Medicine, University of Calgary
+      - img: ../assets/sada2202/Maxime_delisle.png
+        name: Maxime Delisle, MD
+        pos: SPEAKER
+        text: Gastroenterologist, CIUSSS de l’Estrie - Centre hospitalier universitaire de Sherbrooke; Assistant Professor, University of Sherbrooke
 ---
 
 <mjml lang="CA-en">

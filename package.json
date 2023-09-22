@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "compile": "tsc -b tsconfig.build.json",
-    "watch": "tsc -b tsconfig.build.json -w",
+    "compile:watch": "tsc -b tsconfig.build.json -w",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
@@ -19,6 +19,6 @@
     "packages/*"
   ],
   "dependencies": {
-    "workspaces": "^0.1.0"
+    "zx": "^7.2.3"
   }
 }
