@@ -19,6 +19,7 @@ export type RunTimeConfig = {
     files: {
         [key: string]: RunTimeFile[];
     };
+    env: "dev" | "prod";
 };
 export type Settings = {
     inputFiles?: string | string[];

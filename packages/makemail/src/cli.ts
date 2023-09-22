@@ -41,7 +41,6 @@ export const defaultSettings: Settings = {
   ..._defaultSettings,
   srcDir: "example/src",
   outDir: "example/dist",
-  watch: true,
   locales: [DEFAULT_LOCALE],
 
   // browserSync: {
@@ -100,16 +99,18 @@ compile
     await makeNecessaryDirs(settings);
 
     const runtime = await compileRuntimeConfig(settings);
+    runtime.env = "dev";
 
     if (settings.watch || _.isUndefined(settings.watch)) {
       // watch files (by default)
       watchFiles(settings, runtime);
     } else {
       // compile all files once
-      for (const inputFilePath of Object.keys(runtime.files)) {
-        const files = runtime.files[inputFilePath];
-        await compileFiles(settings, files);
-      }
+      await compileFiles(settings, runtime);
+      // for (const inputFilePath of Object.keys(runtime.files)) {
+      //   const files = runtime.files[inputFilePath];
+
+      // }
     }
 
     // compile the welcome page
@@ -117,11 +118,18 @@ compile
 
     // browser-sync (by default)
     if (settings.browserSync || _.isUndefined(settings.browserSync)) {
+      // set default browser-sync options
+      if (_.isUndefined(settings.browserSync?.watch)) {
+        settings.browserSync = {
+          watch: true,
+          startPath: "__.html",
+        };
+      }
       browserSync.init({
         server: settings.outDir,
         watch: settings.browserSync?.watch || _.isUndefined(settings.browserSync?.watch), // watch for changes as long as the user hasn't specified not to
-        ...settings.browserSync,
-        // TODO: options like --browser-sync "start --server example/dist"
+        ...(settings.browserSync || {}),
+        // TODO: options like --browser-sync "start --server example/dist"???
       });
     }
   });
@@ -147,16 +155,18 @@ compile
     await makeNecessaryDirs(settings);
 
     const runtime = await compileRuntimeConfig(settings);
+    runtime.env = "prod";
 
     if (settings.watch) {
       // watch for changes only if the user has specified to
       watchFiles(settings, runtime);
     } else {
       // compile all files once
-      for (const inputFilePath of Object.keys(runtime.files)) {
-        const files = runtime.files[inputFilePath];
-        await compileFiles(settings, files);
-      }
+      await compileFiles(settings, runtime);
+      // for (const inputFilePath of Object.keys(runtime.files)) {
+      //   const files = runtime.files[inputFilePath];
+      //   await compileFiles(settings, files);
+      // }
     }
 
     // compile the welcome page
@@ -226,7 +236,7 @@ async function compileWelcomePage(settings: Settings, runtime: RunTimeConfig) {
   await fs.writeFile(welcomeFile.inputPath, welcomeMjml);
 
   // compile the welcome file
-  await compileFiles(settings, [welcomeFile]);
+  await compileFiles(settings, runtime, [welcomeFile]);
 }
 
 /**
@@ -260,31 +270,34 @@ async function watchFiles(settings: Settings, runtime: RunTimeConfig) {
   const watcher = watch(Object.keys(runtime.files), { ignoreInitial: true });
 
   watcher.on("ready", async () => {
-    for (const inputFilePath of Object.keys(runtime.files)) {
-      const files = runtime.files[inputFilePath];
-      await compileFiles(settings, files);
-    }
+    await compileFiles(settings, runtime);
+    // for (const inputFilePath of Object.keys(runtime.files)) {
+    //   const files = runtime.files[inputFilePath];
+    // }
   });
 
   watcher.on("add", async path => {
     const files = runtime.files[path];
-    await compileFiles(settings, files);
+    await compileFiles(settings, runtime, files);
   });
 
   watcher.on("change", async path => {
     const files = runtime.files[path];
-    await compileFiles(settings, files);
+    await compileFiles(settings, runtime, files);
   });
 }
 
 /**
  * Compile the files
+ *  if files is undefined, then compile all files in runtime.files
  *
  * @param settings
+ * @param runtime
  * @param files
  */
-async function compileFiles(settings: Settings, files: RunTimeFile[]) {
-  // files is plural because there can be multiple output files
+async function compileFiles(settings: Settings, runtime: RunTimeConfig, files?: RunTimeFile[]) {
+  files = files || _.flatten(Object.values(runtime.files));
+  // note: files is plural because there can be multiple output files
   for (const file of files) {
     // TODO: define supported input types
     if (["html", "mjml"].includes(file.inputType)) {
@@ -293,7 +306,7 @@ async function compileFiles(settings: Settings, files: RunTimeFile[]) {
 
       // compile the mjml template
       const htmlOutput = await mjml2Html(templateOutput, {
-        // minify: true,
+        minify: runtime.env === "prod",
         keepComments: false,
       });
 
