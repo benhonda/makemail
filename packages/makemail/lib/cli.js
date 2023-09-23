@@ -75,7 +75,7 @@ compile
     .description("compile templates to html")
     .argument("[glob]", "comma separated list of globs", glob => glob.split(","))
     .action(async (glob, options) => {
-    const settings = await compileSettings(options);
+    const settings = await compileSettings(options, "dev");
     if (glob && glob.length > 0) {
         // overwrite settings with options
         settings.inputFiles = glob;
@@ -91,9 +91,6 @@ compile
     else {
         // compile all files once
         await compileFiles(settings, runtime);
-        // for (const inputFilePath of Object.keys(runtime.files)) {
-        //   const files = runtime.files[inputFilePath];
-        // }
     }
     // compile the welcome page
     await compileWelcomePage(settings, runtime);
@@ -124,7 +121,7 @@ compile
     .description("compile templates to html, minify, inline css, etc.")
     .argument("[glob]", "comma separated list of globs", glob => glob.split(","))
     .action(async (glob, options) => {
-    const settings = await compileSettings(options);
+    const settings = await compileSettings(options, "prod");
     if (glob && glob.length > 0) {
         // overwrite settings with options
         settings.inputFiles = glob;
@@ -140,15 +137,11 @@ compile
     else {
         // compile all files once
         await compileFiles(settings, runtime);
-        // for (const inputFilePath of Object.keys(runtime.files)) {
-        //   const files = runtime.files[inputFilePath];
-        //   await compileFiles(settings, files);
-        // }
     }
-    // compile the welcome page
-    await compileWelcomePage(settings, runtime);
     // browser-sync
     if (settings.browserSync) {
+        // compile the welcome page if we're using browser-sync
+        await compileWelcomePage(settings, runtime);
         browserSync.init({
             server: settings.outDir,
             watch: settings.browserSync.watch,
@@ -234,9 +227,6 @@ async function watchFiles(settings, runtime) {
     const watcher = watch(Object.keys(runtime.files), { ignoreInitial: true });
     watcher.on("ready", async () => {
         await compileFiles(settings, runtime);
-        // for (const inputFilePath of Object.keys(runtime.files)) {
-        //   const files = runtime.files[inputFilePath];
-        // }
     });
     watcher.on("add", async (path) => {
         const files = runtime.files[path];

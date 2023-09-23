@@ -1,26 +1,39 @@
-import { fs, glob, path } from "zx";
+import { YAML, fs, glob, path } from "zx";
 import _ from "lodash";
 import { DEFAULT_LOCALE, defaultSettings } from "../cli.js";
 import matter from "gray-matter";
-const USER_SETTINGS_FILE = "makemail.{json,yml,yaml}";
-export async function compileSettings(opts) {
+async function getSettingsFile(settings, globs) {
+    if (!globs)
+        return undefined;
+    // get the first file that matches the glob
+    const settingsFile = (await glob(globs, {
+        ignoreFiles: ".makemailignore",
+        ignore: [...(settings.ignoreFiles || [])],
+    }))?.[0];
+    // if the file exists, load it
+    if (await fs.exists(settingsFile)) {
+        // JSON
+        if (path.extname(settingsFile) === ".json") {
+            return JSON.parse(await fs.readFile(settingsFile, "utf8"));
+        }
+        // YAML
+        if ([".yml", ".yaml"].includes(path.extname(settingsFile))) {
+            return YAML.parse(await fs.readFile(settingsFile, "utf8"));
+        }
+        throw new Error(`Settings file must be JSON or YAML`);
+    }
+    return undefined;
+}
+export async function compileSettings(opts, env) {
     const definedSettings = async () => {
         // if options.settings, load settings from file and merge with default settings
-        if (await fs.exists(opts.settings)) {
-            const _settings = await glob(opts.settings);
-            return {
-                ...defaultSettings,
-                ...JSON.parse(await fs.readFile(_settings[0], "utf8")),
-            };
-        }
-        // else, look for makemail.{} in the root directory and merge with default settings
-        const userSettingsFile = await glob(USER_SETTINGS_FILE);
-        if (userSettingsFile.length > 0) {
-            return {
-                ...defaultSettings,
-                ...JSON.parse(await fs.readFile(userSettingsFile[0], "utf8")),
-            };
-        }
+        let settings = await getSettingsFile(defaultSettings, opts.settings);
+        if (settings)
+            return { ...defaultSettings, ...settings };
+        // else, look for named makemail settings file in the root directory and merge with default settings
+        settings = await getSettingsFile(defaultSettings, env === "prod" ? "makemail.prod.{json,yml,yaml}" : ["makemail.dev.{json,yml,yaml}", "makemail.{json,yml,yaml}"]);
+        if (settings)
+            return { ...defaultSettings, ...settings };
         // else, just use default settings
         return defaultSettings;
     };
