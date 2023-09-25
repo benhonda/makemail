@@ -122,11 +122,11 @@ program
                 region: "BUCKET_REGION",
             };
         }
+        await $ `mkdir -p ${srcDir}`;
+        await $ `mkdir -p ${outDir}`;
         // create the default settings file
         await fs.writeFile(`${baseDir}/makemail.yml`, YAML.stringify(settings, { indent: 2 }));
         await $ `touch ${baseDir}/.env`;
-        await $ `mkdir -p ${srcDir}`;
-        await $ `mkdir -p ${outDir}`;
     });
     console.log("");
     console.log(chalk.green("Project created!"));
