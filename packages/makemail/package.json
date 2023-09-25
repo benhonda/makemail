@@ -1,7 +1,7 @@
 {
   "name": "makemail",
-  "version": "1.0.0",
-  "description": "",
+  "version": "0.1",
+  "description": "CLI + utilities for bulletproof email development and testing ",
   "main": "lib/index.js",
   "type": "module",
   "bin": {
@@ -35,8 +35,8 @@
     "type": "git",
     "url": "git+https://github.com/benhonda/makemail.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "benhonda",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/benhonda/makemail/issues"
   },
