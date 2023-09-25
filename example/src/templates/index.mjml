@@ -7,9 +7,10 @@
         <mj-text>Links:</mj-text>
 
         {{#each files}}
-        <mj-button href="{{this}}" background-color="transparent" color="blue" align="left" padding="0">{{this}}</mj-button>
+        <mj-button href="{{this}}" background-color="transparent" color="blue" align="left" padding="0"
+          >{{this}}</mj-button
+        >
         {{/each}}
-        
       </mj-column>
     </mj-section>
   </mj-body>

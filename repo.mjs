@@ -189,6 +189,10 @@ async function handlebars() {
   // find <!-- repo.mjs:custom-handlebars-helpers -->
   // replace with the output
 
+  if (!y) {
+    console.log(output.join("\n"));
+  }
+
   const replace = await ques("Replace in README.md? [y/N] ");
 
   if (replace.toLowerCase() === "y") {
@@ -196,8 +200,6 @@ async function handlebars() {
       tagline: false,
     });
   }
-
-  console.log(output.join("\n"));
 }
 
 function ques(query, options = {}) {

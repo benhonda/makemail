@@ -1,4 +1,11 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+# run repo to build readme
 ./repo.mjs run -y
+
+# run prettier
+npx prettier --write .
+
+# add files to git
+git add .
