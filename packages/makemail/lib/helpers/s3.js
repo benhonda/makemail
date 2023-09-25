@@ -1,83 +1,38 @@
-import { $, chalk, fs, path } from "zx";
-import { parse as parseHtml } from "node-html-parser";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-export async function uploadToS3(filename, filepath, bucket, region) {
-    const client = new S3Client({ region: region || process.env.AWS_DEFAULT_REGION });
-    const getContentType = await $ `file --mime-type ${filepath} | cut -d' ' -f2`;
-    const contentType = getContentType.stdout.trim();
-    const command = new PutObjectCommand({
-        Bucket: bucket,
-        Key: filename,
-        Body: fs.readFileSync(filepath),
-        ContentType: contentType,
-        // ACL: "public-read",
-    });
-    client.send(command);
-    return `https://${bucket}.s3.${region}.amazonaws.com/${filename}`;
+import { $, chalk, fetch, fs, path } from "zx";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+export function getS3Url(settings, filePath) {
+    return `https://${settings.s3?.bucket}.s3.${settings.s3?.region}.amazonaws.com/${path.basename(filePath)}`;
 }
-export async function uploadAndReplaceAssetsInFile(config, file, html) {
-    // handle assets
+export async function uploadToS3(settings, filePath) {
     try {
-        const { region, bucket } = getAwsConfig(config);
-        const root = parseHtml(html);
-        const imgSrcs = root
-            .querySelectorAll("mj-image")
-            .map(img => img.getAttribute("src"))
-            .filter(src => {
-            // check if the src is a local file
-            return src && !src.startsWith("http");
+        const getContentType = await $ `file --mime-type ${filePath} | cut -d' ' -f2`;
+        const contentType = getContentType.stdout.trim();
+        const readFile = await fs.readFile(filePath);
+        const command = new PutObjectCommand({
+            Bucket: settings.s3?.bucket,
+            Key: path.basename(filePath),
+            Body: readFile,
+            ContentType: contentType,
+            // ACL: "public-read",
         });
-        // const client = new S3Client();
-        // TODO: maybe create a bucket
-        // const command = new CreateBucketCommand({
-        //   Bucket: "mjml-preview",
-        //   // ACL: "public-read",
-        //   // ObjectOwnership: "BucketOwnerPreferred",
-        // });
-        // const response = await client.send(command);
-        // delete the public access block
-        // const deletePublicAccessBlockCommand = new DeletePublicAccessBlockCommand({
-        //   Bucket: "mjml-preview",
-        // });
-        // const deletePublicAccessBlockResponse = await client.send(deletePublicAccessBlockCommand);
-        for (const src of imgSrcs) {
-            if (!src)
-                continue;
-            let assetFile = "";
-            try {
-                assetFile = path.resolve(path.dirname(file), src);
-                const assetFileName = path.basename(assetFile);
-                // upload the file
-                const s3Url = await uploadToS3(assetFileName, assetFile, bucket, region);
-                // now replace the src with the S3 url
-                html = html.replaceAll(src, s3Url);
-            }
-            catch (error) {
-                console.log(chalk.red(`${file} - Failed to upload ${assetFile}.`));
-                console.log(error);
-            }
-        }
+        await settings.s3?.client.send(command);
+        return getS3Url(settings, filePath);
     }
     catch (error) {
-        console.log(chalk.red(`${file} - assets failed to compile.`));
-        console.log(error);
+        console.log(chalk.red(`Failed to upload ${filePath}.`));
+        if (settings.verbose)
+            console.log(error);
     }
-    return html;
+    return undefined;
 }
-function getAwsConfig(config) {
-    const { bucket, region } = config.s3 || {};
-    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-        throw new Error("No AWS credentials found. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.");
+export async function existsInS3(settings, filePath) {
+    try {
+        // check if s3Url exists (simplest way to check if file exists)
+        const resp = await fetch(getS3Url(settings, filePath));
+        return resp.status > 199 && resp.status < 300;
     }
-    if (!bucket) {
-        throw new Error("No S3 bucket found. Set config.s3.bucket.");
+    catch (error) {
+        return false;
     }
-    if (!region && !process.env.AWS_DEFAULT_REGION) {
-        throw new Error("No S3 region found. Either set config.s3.region or AWS_DEFAULT_REGION.");
-    }
-    return {
-        bucket,
-        region: region || process.env.AWS_DEFAULT_REGION,
-    };
 }
 //# sourceMappingURL=s3.js.map

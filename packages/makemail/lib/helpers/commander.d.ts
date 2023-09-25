@@ -1,3 +1,3 @@
-import { RunTimeConfig, Settings } from "../@types/types.js";
-export declare function compileSettings(opts: any, env: "dev" | "prod"): Promise<Settings>;
-export declare function compileRuntimeConfig(settings: Settings): Promise<RunTimeConfig>;
+import { CommanderOptionValues, CompiledSettings, RunTimeConfig } from "../@types/types.js";
+export declare function compileSettings(opts: CommanderOptionValues, env: "dev" | "prod"): Promise<CompiledSettings>;
+export declare function compileRuntimeConfig(settings: CompiledSettings, env: "dev" | "prod"): Promise<RunTimeConfig>;

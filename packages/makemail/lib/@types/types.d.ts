@@ -1,9 +1,11 @@
+import { S3Client } from "@aws-sdk/client-s3";
 import browserSync from "browser-sync";
+export type EnvBool = "dev" | "prod" | boolean;
 export type RunTimeFile = {
     inputPath: string;
     outputPath: string;
     inputType: "html" | "mjml" | string;
-    outputType: "html";
+    outputType: "html" | string;
     locale?: string;
     locales?: string[];
     handlebars?: {
@@ -16,23 +18,28 @@ export type RunTimeFile = {
     };
 };
 export type RunTimeConfig = {
+    env: "dev" | "prod";
     files: {
         [key: string]: RunTimeFile[];
     };
-    env: "dev" | "prod";
 };
-export type Settings = {
+export interface CompiledSettings {
+    verbose: boolean;
     inputFiles?: string | string[];
     srcDir: string;
     outDir: string;
-    watch?: boolean;
-    locales?: string[];
+    watch: boolean;
+    locales: string[];
     ignoreFiles?: string[];
-    options?: {
-        deleteOutDir?: boolean;
-        omitDefaultLocaleFromFileName?: boolean;
+    uploadFilesAndAssets: boolean;
+    forceUploadFilesAndAssets: boolean;
+    options: {
+        deleteOutDir: boolean;
+        omitDefaultLocaleFromFileName: boolean;
+        viewInBrowserTag: string;
     };
-    browserSync?: browserSync.Options;
+    browserSync: boolean;
+    browserSyncOptions: browserSync.Options;
     handlebars?: {
         context?: {
             [key: string]: any;
@@ -41,6 +48,46 @@ export type Settings = {
             [key: string]: any;
         };
     };
+    s3?: {
+        client: S3Client;
+        bucket: string;
+        region: string;
+    };
+}
+export type UserSettings = {
+    [K in keyof CompiledSettings]: CompiledSettings[K] extends boolean ? EnvBool : CompiledSettings[K] extends {
+        [key: string]: any;
+    } ? {
+        [K2 in keyof CompiledSettings[K]]: CompiledSettings[K][K2] extends boolean ? EnvBool : CompiledSettings[K][K2];
+    } : CompiledSettings[K];
+};
+export interface CommanderOptionValues {
+    verbose: any;
+    watch: any;
+    settings: any;
+    src: any;
+    input: any;
+    output: any;
+    locales: any;
+    deleteOutDir: any;
+    browserSync: any;
+    browserSyncOptions: any;
+    upload: any;
+    forceUpload: any;
+    bucket: any;
+    region: any;
+    omitDefaultLocaleFromFileName: any;
+    noOpen: any;
+    port: any;
+    startPath: any;
+}
+type CommanderOption = {
+    flag: string;
+    description?: string;
+    default?: any;
+};
+export type ArgvConfig<T = CommanderOptionValues> = {
+    [K in keyof T]: CommanderOption;
 };
 export type _Settings = {
     emailUrlTagName: string;
@@ -74,3 +121,4 @@ export type _Settings = {
     locales: string[];
     ignoreDefaultLocale?: boolean;
 };
+export {};

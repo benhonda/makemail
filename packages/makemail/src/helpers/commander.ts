@@ -1,10 +1,12 @@
-import { $, YAML, fs, glob, path } from "zx";
-import { RunTimeConfig, RunTimeFile, Settings } from "../@types/types.js";
+import { $, YAML, chalk, fs, glob, path } from "zx";
+import { CommanderOptionValues, CompiledSettings, RunTimeConfig, RunTimeFile, UserSettings } from "../@types/types.js";
 import _ from "lodash";
 import { DEFAULT_LOCALE, defaultSettings } from "../cli.js";
 import matter from "gray-matter";
+import { parseEnvBoolWithArgv } from "./utils.js";
+import { S3Client } from "@aws-sdk/client-s3";
 
-async function getSettingsFile(settings: Settings, globs: string | string[]) {
+async function getSettingsFile(settings: UserSettings, globs: string | string[]) {
   if (!globs) return undefined;
 
   // get the first file that matches the glob
@@ -33,8 +35,8 @@ async function getSettingsFile(settings: Settings, globs: string | string[]) {
   return undefined;
 }
 
-export async function compileSettings(opts: any, env: "dev" | "prod") {
-  const definedSettings: () => Promise<Settings> = async () => {
+export async function compileSettings(opts: CommanderOptionValues, env: "dev" | "prod"): Promise<CompiledSettings> {
+  const definedSettings: () => Promise<UserSettings> = async () => {
     // if options.settings, load settings from file and merge with default settings
     let settings = await getSettingsFile(defaultSettings, opts.settings);
     if (settings) return { ...defaultSettings, ...settings };
@@ -50,44 +52,79 @@ export async function compileSettings(opts: any, env: "dev" | "prod") {
     return defaultSettings;
   };
 
-  const settings = await definedSettings();
+  const userSettings = await definedSettings();
 
-  // overwrite settings with options
+  const settings: CompiledSettings = {
+    ...userSettings,
+    // overwrite settings with command line options
+    // or use the default settings (parsed to booleans) if the option is not defined
+    options: {
+      ...defaultSettings.options,
+      deleteOutDir: parseEnvBoolWithArgv(userSettings.options?.deleteOutDir, opts.deleteOutDir, env),
+      omitDefaultLocaleFromFileName: parseEnvBoolWithArgv(
+        userSettings.options?.omitDefaultLocaleFromFileName,
+        opts.omitDefaultLocaleFromFileName,
+        env,
+      ),
+    },
+    verbose: parseEnvBoolWithArgv(userSettings.verbose, opts.verbose, env),
+    watch: parseEnvBoolWithArgv(userSettings.watch, opts.watch, env),
+    browserSync: parseEnvBoolWithArgv(userSettings.browserSync, opts.browserSync, env),
+    uploadFilesAndAssets: parseEnvBoolWithArgv(userSettings.uploadFilesAndAssets, opts.upload, env),
+    forceUploadFilesAndAssets: parseEnvBoolWithArgv(userSettings.forceUploadFilesAndAssets, opts.forceUpload, env),
+  };
 
-  // overwrite settings with options
-  // if (opts.preview) {
-  //   settings.preview = opts.preview;
-  // }
+  // browserSync settings
+  if (settings.browserSync) {
+    settings.browserSyncOptions = {
+      ...(settings.browserSyncOptions || {}),
+      ...(userSettings.browserSyncOptions || {}),
+      port: opts.port || settings.browserSyncOptions?.port || 3000,
+      open: !_.isUndefined(opts.noOpen) ? !opts.noOpen : settings.browserSyncOptions?.open || false,
+      startPath: opts.startPath || settings.browserSyncOptions?.startPath || "/",
+    };
+  }
 
-  // if (opts.templates) {
-  //   settings.dirs.templates = opts.templates;
-  // }
+  // prep s3 settings
+  if (settings.uploadFilesAndAssets || settings.forceUploadFilesAndAssets) {
+    const bucket = opts.bucket || settings.s3?.bucket || process.env.AWS_DEFAULT_BUCKET;
+    const region = opts.region || settings.s3?.region || process.env.AWS_DEFAULT_REGION;
 
-  // if (opts.assets) {
-  //   settings.dirs.assets = opts.assets;
-  // }
+    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+      console.log(chalk.red("No AWS credentials found. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY."));
+      return process.exit(1);
+    }
 
-  // if (opts.output) {
-  //   settings.dirs.output = opts.output;
-  // }
+    if (!bucket) {
+      console.log(
+        chalk.red("No S3 bucket found. Either set s3.bucket in settings or AWS_DEFAULT_BUCKET in your environment."),
+      );
+      return process.exit(1);
+    }
 
-  // if (opts.watch) {
-  //   settings.watch = opts.watch;
-  // }
+    if (!region) {
+      console.log(
+        chalk.red("No S3 region found. Either set s3.region in settings or AWS_DEFAULT_REGION in your environment."),
+      );
+      return process.exit(1);
+    }
 
-  // if (opts.browserSync) {
-  //   settings.browserSync = {
-  //     open: opts.browserSync === "no-open" ? false : true,
-  //   };
-  // }
+    settings.s3 = {
+      ...(settings.s3 || {}),
+      bucket,
+      region,
+      client: new S3Client({ region }),
+    };
+  }
 
   return settings;
 }
 
-export async function compileRuntimeConfig(settings: Settings) {
+export async function compileRuntimeConfig(settings: CompiledSettings, env: "dev" | "prod") {
   // get all files
   const runtime = {
     files: {},
+    env,
   } as RunTimeConfig;
 
   // list all the input files
@@ -105,7 +142,7 @@ export async function compileRuntimeConfig(settings: Settings) {
   for (const inputFile of inputFiles) {
     // input type
     const inputType = path.extname(inputFile).replace(".", "");
-    const outputType = "html";
+    const outputType = ["html", "mjml"].includes(inputType) ? "html" : inputType;
 
     // get the output file path, which may not exist yet
     // REQUIRES that the input file is in the srcDir
@@ -132,15 +169,41 @@ export async function compileRuntimeConfig(settings: Settings) {
       // create a file for each locale
       // loop with index
       for (const [i, locale] of locales.entries()) {
+        // if it's the first locale, use the original file name, else append the locale
+        const outputPath =
+          i === 0 && settings.options?.omitDefaultLocaleFromFileName
+            ? file.outputPath.replace(`.${inputType}`, `.${outputType}`)
+            : `${path.dirname(file.outputPath)}/${path.basename(
+                file.outputPath,
+                path.extname(file.outputPath),
+              )}_${locale}.${outputType}`;
+
+        const handlebars = {
+          context: {
+            ...(settings.handlebars?.context || {}),
+            ...(frontmatter.handlebars?.context || {}),
+          },
+          options: {
+            ...(settings.handlebars?.options || {}),
+            ...(frontmatter.handlebars?.options || {}),
+          },
+        };
+
+        if (env === "prod") {
+          if (settings.s3) {
+            // add the s3 url to the handlebars context
+            handlebars.context[settings.options.viewInBrowserTag] = `https://${settings.s3.bucket}.s3.${
+              settings.s3.region
+            }.amazonaws.com/${path.basename(outputPath)}}`;
+          }
+          // TODO: maybe add other object storage providers
+        }
+
         const fileSettings: Partial<RunTimeFile> = {
-          // if it's the first file, use the original file name, else append the locale
-          outputPath:
-            i === 0 && settings.options?.omitDefaultLocaleFromFileName
-              ? file.outputPath.replace(`.${inputType}`, `.${outputType}`)
-              : `${file.outputPath.replace(path.extname(file.outputPath), "")}_${locale}.${outputType}`,
+          outputPath,
           locales,
           locale,
-          handlebars: frontmatter.handlebars || settings.handlebars,
+          handlebars,
         };
 
         // new file object to avoid mutating the original and causing bugs

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import "dotenv/config";
-import { Settings } from "./@types/types.js";
+import { ArgvConfig, UserSettings } from "./@types/types.js";
 /**
  *
  * Default configuration settings
  *
  */
 export declare const DEFAULT_LOCALE = "en";
-export declare const _defaultSettings: Settings;
-export declare const defaultSettings: Settings;
+export declare const ARGV_CONFIG: ArgvConfig;
+export declare const _defaultSettings: UserSettings;
+export declare const defaultSettings: UserSettings;

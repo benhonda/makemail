@@ -54,12 +54,9 @@ handlebars:
     <!-- top banner -->
     <mj-section mj-class="bg-blue-dark">
       <mj-column>
-        <mj-button
-          background-color="transparent"
-          padding="0"
-          href="{{_emailUrl}}"
-        >
-          {{t "Email not loading correctly? Click here to view in your browser" "Courriel ne charge pas correctement? Cliquez ici pour afficher dans votre navigateur"}}
+        <mj-button background-color="transparent" padding="0" href="{{_emailUrl}}">
+          {{t "Email not loading correctly? Click here to view in your browser" "Courriel ne charge pas correctement?
+          Cliquez ici pour afficher dans votre navigateur"}}
         </mj-button>
       </mj-column>
     </mj-section>
@@ -75,7 +72,9 @@ handlebars:
     <mj-section mj-class="bg-blue-light" padding-top="20px" padding-bottom="20px">
       <mj-column width="70%">
         <mj-text>
-          This Other Learning Activity will provide gastroenterologists with practical knowledge on new IBD advances
+          {{t "This Other Learning Activity will provide gastroenterologists with practical knowledge on new IBD
+          advances" "Cette activité d’apprentissage complémentaire fournira aux gastroentérologues des connaissances
+          pratiques sur les nouvelles avancées en MII"}}
         </mj-text>
       </mj-column>
     </mj-section>
@@ -84,7 +83,8 @@ handlebars:
     <mj-section mj-class="bg-blue-dark" padding-top="20px" padding-bottom="20px">
       <mj-column width="80%">
         <mj-text color="white" font-weight="bold">
-          From the Outside In: Integrating Ultrasound into Canadian IBD Care
+          {{t "From the Outside In: Integrating Ultrasound into Canadian IBD Care" "De l’extérieur vers l’intérieur :
+          intégrer l’échographie aux soins canadiens pour la MII"}}
         </mj-text>
         <mj-text color="white"> Tuesday, September 19, 2023 | 7:00-8:00 PM ET</mj-text>
         <mj-text color="white">
