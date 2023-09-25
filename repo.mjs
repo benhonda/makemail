@@ -46,11 +46,18 @@ if (run?.toLowerCase() === "run") {
       console.log(chalk.green("✔ Done help"));
 
       await spinner("Running scripts", async () => {
-        await sleep(1000);
+        await sleep(500);
         await scripts();
       });
 
       console.log(chalk.green("✔ Done scripts"));
+
+      await spinner("Running handlebars", async () => {
+        await sleep(500);
+        await handlebars();
+      });
+
+      console.log(chalk.green("✔ Done handlebars"));
     }
   }
 } else {
