@@ -8,5 +8,4 @@ import { ArgvConfig, UserSettings } from "./@types/types.js";
  */
 export declare const DEFAULT_LOCALE = "en";
 export declare const ARGV_CONFIG: ArgvConfig;
-export declare const _defaultSettings: UserSettings;
 export declare const defaultSettings: UserSettings;

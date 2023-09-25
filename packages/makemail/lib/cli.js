@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { $, chalk, fs, path } from "zx";
+import { $, YAML, chalk, fs, path, question, sleep, spinner } from "zx";
 import "dotenv/config";
 import { Command } from "commander";
 import browserSync from "browser-sync";
@@ -41,9 +41,9 @@ export const ARGV_CONFIG = {
         description: "omit the default locale from the file name",
     },
 };
-// TODO: switch this to be defaultSettings
-export const _defaultSettings = {
+export const defaultSettings = {
     verbose: "dev",
+    baseDir: ".",
     srcDir: "src",
     outDir: "dist",
     watch: "dev",
@@ -57,24 +57,10 @@ export const _defaultSettings = {
     },
     browserSync: "dev",
     browserSyncOptions: {
+        open: true,
         watch: true,
         startPath: "__.html",
     },
-    // TODO:
-    // maybe dev: {} and prod: {}?
-    // then merge in compileSettings() so that they can be overwritten with opts
-};
-// THESE ARE MY TESTING SETTINGS
-export const defaultSettings = {
-    ..._defaultSettings,
-    srcDir: "example/src",
-    outDir: "example/dist",
-    locales: [DEFAULT_LOCALE],
-    // browserSync: {
-    //   startPath: "__.html",
-    //   open: true,
-    //   watch: undefined,
-    // },
 };
 /**
  *
@@ -90,6 +76,89 @@ for (const [__, value] of Object.entries(ARGV_CONFIG)) {
     // program.addOption(new Option(value.flag, value.description));
     // console.log(value.flag, value.description);
 }
+/**
+ *
+ *
+ * 'init' command
+ *
+ *
+ */
+program
+    .command("init")
+    .description("step-by-step setup a new project")
+    .action(async () => {
+    console.log("");
+    console.log(chalk.blueBright("Welcome to makemail! Let's get started."));
+    console.log("");
+    console.log("We'll ask you a few questions to setup your project.");
+    console.log("");
+    const baseDir = (await question("Where is your root directory? (default: '.') ")) || ".";
+    const _srcDir = (await question("Where would you like to store your source files (relative to your root dir)? (default: src) ")) || "src";
+    const _outDir = (await question("Where would you like to store your compiled files? (default: dist) ")) || "dist";
+    const s3 = (await question("Are you going to upload your files and assets to s3? (y/N) ")) === "y";
+    const srcDir = path.resolve(baseDir, _srcDir);
+    const outDir = path.resolve(baseDir, _outDir);
+    if (await fs.exists(srcDir)) {
+        const overwrite = await question(chalk.yellow(`Source directory already exists at ${srcDir}. Overwrite? (y/N) `));
+        if (overwrite !== "y") {
+            console.log(chalk.red("Aborting."));
+            process.exit(1);
+        }
+        else {
+            await $ `rm -rf ${srcDir}`;
+        }
+    }
+    await spinner(chalk.yellow("Creating project..."), async () => {
+        await sleep(1000);
+        const settings = {
+            ...defaultSettings,
+            baseDir,
+            srcDir: _srcDir,
+            outDir: _outDir,
+        };
+        if (s3) {
+            settings.s3 = {
+                bucket: "BUCKET_NAME",
+                region: "BUCKET_REGION",
+            };
+        }
+        // create the default settings file
+        await fs.writeFile(`${baseDir}/makemail.yml`, YAML.stringify(settings, { indent: 2 }));
+        await $ `touch ${baseDir}/.env`;
+        await $ `mkdir -p ${srcDir}`;
+        await $ `mkdir -p ${outDir}`;
+    });
+    console.log("");
+    console.log(chalk.green("Project created!"));
+    console.log(chalk.green(`Your settings are saved in ${baseDir}/makemail.yml`));
+    console.log("");
+    if (s3) {
+        console.log(chalk.yellow("To enable S3, you'll need to add your AWS credentials to your environment."));
+        console.log(chalk.yellow("We've created a .env file for you. Add the following to it:"));
+        console.log("");
+        console.log(chalk.yellow("AWS_ACCESS_KEY_ID=YOUR_KEY"));
+        console.log(chalk.yellow("AWS_SECRET_ACCESS_KEY=YOUR_SECRET_KEY"));
+        console.log("");
+        console.log(chalk.yellow("You'll also need to add your bucket name and region."));
+        console.log(chalk.yellow(`The easiest way to do that is to replace the following in ${baseDir}/makemail.yml:`));
+        console.log("");
+        console.log(chalk.yellow("bucket: BUCKET_NAME"));
+        console.log(chalk.yellow("region: BUCKET_REGION"));
+        console.log("");
+    }
+    console.log("If you need help, check out the docs at https://github.com/benhonda/makemail/, or run:");
+    console.log("");
+    console.log(chalk.blueBright("makemail --help"));
+    console.log("");
+    console.log("Ok! Develop your emails with:");
+    console.log("");
+    console.log(chalk.blueBright("makemail dev"));
+    console.log("");
+    console.log("Or build your emails with:");
+    console.log("");
+    console.log(chalk.blueBright("makemail prod"));
+    console.log("");
+});
 /**
  *
  *

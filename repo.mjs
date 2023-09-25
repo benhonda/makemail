@@ -29,6 +29,13 @@ if (run?.toLowerCase() === "run") {
      * Fetch all the handlebars helpers that we've registered
      */
     await handlebars();
+  } else if (command === "copy-readme") {
+    /**
+     * copy-readme
+     *
+     * Copy the README.md from the root to all the packages
+     */
+    await copyReadMe();
   } else {
     if (command) {
       console.log(chalk.red(`Command \`${command}\` not found`));
@@ -58,6 +65,13 @@ if (run?.toLowerCase() === "run") {
       });
 
       console.log(chalk.green("✔ Done handlebars"));
+
+      await spinner("Running copy-readme", async () => {
+        await sleep(500);
+        await copyReadMe();
+      });
+
+      console.log(chalk.green("✔ Done copy-readme"));
     }
   }
 } else {
@@ -199,6 +213,17 @@ async function handlebars() {
     await findAndReplace("start:repo.mjs:helpers", "end:repo.mjs:helpers", output, {
       tagline: false,
     });
+  }
+}
+
+async function copyReadMe() {
+  const packages = (await $`ls packages`.quiet()).stdout.split("\n");
+
+  for (const pkg of packages) {
+    if (pkg) {
+      await $`cp README.md packages/${pkg}`.quiet();
+      console.log(chalk.green(`✔ Copied README.md to packages/${pkg}`));
+    }
   }
 }
 

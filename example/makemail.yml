@@ -1,0 +1,18 @@
+verbose: dev
+baseDir: example
+srcDir: src
+outDir: dist
+watch: dev
+locales:
+  - en
+uploadFilesAndAssets: prod
+forceUploadFilesAndAssets: false
+options:
+  deleteOutDir: prod
+  omitDefaultLocaleFromFileName: true
+  viewInBrowserTag: viewInBrowserLink
+browserSync: dev
+browserSyncOptions:
+  open: true
+  watch: true
+  startPath: __.html

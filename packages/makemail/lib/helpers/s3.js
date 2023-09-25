@@ -15,7 +15,7 @@ export async function uploadToS3(settings, filePath) {
             ContentType: contentType,
             // ACL: "public-read",
         });
-        await settings.s3?.client.send(command);
+        await settings.s3?.client?.send(command);
         return getS3Url(settings, filePath);
     }
     catch (error) {

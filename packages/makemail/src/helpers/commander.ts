@@ -67,6 +67,8 @@ export async function compileSettings(opts: CommanderOptionValues, env: "dev" | 
         env,
       ),
     },
+    srcDir: path.resolve(userSettings.baseDir, userSettings.srcDir),
+    outDir: path.resolve(userSettings.baseDir, userSettings.outDir),
     verbose: parseEnvBoolWithArgv(userSettings.verbose, opts.verbose, env),
     watch: parseEnvBoolWithArgv(userSettings.watch, opts.watch, env),
     browserSync: parseEnvBoolWithArgv(userSettings.browserSync, opts.browserSync, env),

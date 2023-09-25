@@ -26,6 +26,7 @@ export type RunTimeConfig = {
 export interface CompiledSettings {
     verbose: boolean;
     inputFiles?: string | string[];
+    baseDir: string;
     srcDir: string;
     outDir: string;
     watch: boolean;
@@ -49,7 +50,7 @@ export interface CompiledSettings {
         };
     };
     s3?: {
-        client: S3Client;
+        client?: S3Client;
         bucket: string;
         region: string;
     };
