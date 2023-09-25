@@ -7,7 +7,7 @@ import { watch } from "chokidar";
 import mjml2Html from "mjml";
 import handlebars from "handlebars";
 import { parse as parseHtml } from "node-html-parser";
-import { compileRuntimeConfig, compileSettings } from "./helpers/commander.js";
+import { compileRuntimeConfig, compileSettings, recompileFrontMatterForFile } from "./helpers/commander.js";
 import { welcomeMjml } from "./helpers/_welcome.js";
 import _ from "lodash";
 import { existsInS3, getS3Url, uploadToS3 } from "./helpers/s3.js";
@@ -20,6 +20,7 @@ $.verbose = false;
 export const DEFAULT_LOCALE = "en";
 export const ARGV_CONFIG = {
     verbose: { flag: "-v --verbose", description: "verbose output" },
+    files: { flag: "-f --files <files>", description: "comma separated list of globs" },
     watch: { flag: "-w --watch", description: "watch for changes" },
     settings: { flag: "--settings <file>", description: "set settings file" },
     src: { flag: "-s --src <dir>", description: "set src dir" },
@@ -171,14 +172,10 @@ program
 program
     .command("dev", { isDefault: true })
     .description("compile templates to html")
-    .argument("[glob]", "comma separated list of globs", glob => glob.split(","))
-    .action(async (glob) => {
+    .argument("[workspace]", "workspace (directory) where makemail will look for a makemail.yml file")
+    .action(async (workspace) => {
     const options = program.opts();
-    const settings = await compileSettings(options, "dev");
-    if (glob && glob.length > 0) {
-        // overwrite settings with options
-        settings.inputFiles = glob;
-    }
+    const settings = await compileSettings(options, "dev", workspace);
     await maybeDeleteOutDir(settings);
     await makeNecessaryDirs(settings);
     const runtime = await compileRuntimeConfig(settings, "dev");
@@ -214,14 +211,10 @@ program
 program
     .command("prod")
     .description("compile templates to html, minify, inline css, etc.")
-    .argument("[glob]", "comma separated list of globs", glob => glob.split(","))
-    .action(async (glob) => {
+    .argument("[workspace]", "workspace (directory) where makemail will look for a makemail.yml file")
+    .action(async (workspace) => {
     const options = program.opts();
-    const settings = await compileSettings(options, "prod");
-    if (glob && glob.length > 0) {
-        // overwrite settings with options
-        settings.inputFiles = glob;
-    }
+    const settings = await compileSettings(options, "prod", workspace);
     await maybeDeleteOutDir(settings);
     await makeNecessaryDirs(settings);
     const runtime = await compileRuntimeConfig(settings, "prod");
@@ -232,18 +225,20 @@ program
     else {
         // compile all files once
         const files = await compileFiles(settings, runtime);
-        const pwd = (await $ `pwd`).stdout.trim();
-        console.log("**********************************************");
-        console.log("* The following files were compiled:");
-        console.log("*");
+        // const pwd = (await $`pwd`).stdout.trim();
+        console.log("");
+        console.log(chalk.green("✔ Done"));
+        console.log("");
+        console.log("The following files were compiled:");
+        console.log("");
         files.forEach(file => {
             if (file.outputType === "html" && file.outputPath) {
-                console.log(`* ${file.outputPath}`.trim());
-                console.log(`* - test in browser link: file://${pwd}/${file.outputPath}`);
-                console.log(`*`);
+                console.log(`${file.outputPath}`.trim());
+                console.log(`- test in browser link: file://${file.outputPath}`);
+                console.log("");
             }
         });
-        console.log("**********************************************");
+        console.log("");
     }
     // browser-sync
     if (settings.browserSync) {
@@ -290,20 +285,22 @@ async function compileFiles(settings, runtime, files) {
     for (const file of files) {
         // TODO: define supported input types
         if (["html", "mjml"].includes(file.inputType)) {
+            // recompile frontmatter
+            await recompileFrontMatterForFile(runtime, file);
             // compile the handlebars template
             const templateOutput = await compileHandlebars(settings, file);
             // go in and replace assets
             let maybeWithAssets = templateOutput;
+            const root = parseHtml(templateOutput);
+            const imgSrcs = root
+                .querySelectorAll("mj-image")
+                .map(img => img.getAttribute("src"))
+                .filter(src => {
+                // check if the src is a local file
+                return src && !src.startsWith("http");
+            });
             if (settings.uploadFilesAndAssets) {
                 try {
-                    const root = parseHtml(templateOutput);
-                    const imgSrcs = root
-                        .querySelectorAll("mj-image")
-                        .map(img => img.getAttribute("src"))
-                        .filter(src => {
-                        // check if the src is a local file
-                        return src && !src.startsWith("http");
-                    });
                     for (const src of imgSrcs) {
                         if (!src)
                             continue;
@@ -332,15 +329,31 @@ async function compileFiles(settings, runtime, files) {
                         console.log(error);
                 }
             }
+            // test all images to make sure they exist
+            const imgSrcsToTest = root.querySelectorAll("mj-image").map(img => img.getAttribute("src"));
+            for (const src of imgSrcsToTest) {
+                if (!src)
+                    continue;
+                // remote links
+                if (src.startsWith("http")) {
+                    if (await existsInS3(settings, src))
+                        continue;
+                    else {
+                        console.log(chalk.red(`* - ${src} - file does not exist.`));
+                    }
+                }
+                // local links
+                const pathToAsset = path.resolve(path.dirname(file.inputPath), src);
+                if (!(await fs.exists(pathToAsset))) {
+                    console.log(chalk.red(`* - ${pathToAsset} - file does not exist.`));
+                }
+            }
             // compile the mjml template
-            const htmlOutput = await mjml2Html(maybeWithAssets, {
-                minify: runtime.env === "prod",
-                keepComments: false,
-            });
+            const htmlOutput = await compileMjml(settings, runtime, file, maybeWithAssets);
             // this makes any nested directories that don't exist
             await $ `mkdir -p ${path.dirname(file.outputPath)}`;
             // write the output file
-            await fs.writeFile(file.outputPath, htmlOutput.html);
+            await fs.writeFile(file.outputPath, htmlOutput);
             // upload the file to s3
             if (settings.uploadFilesAndAssets) {
                 const s3Url = await uploadToS3(settings, file.outputPath);
@@ -359,6 +372,20 @@ async function compileFiles(settings, runtime, files) {
         }
     }
     return files;
+}
+async function compileMjml(settings, runtime, file, inputContent) {
+    try {
+        return (await mjml2Html(inputContent, {
+            minify: runtime.env === "prod",
+            keepComments: false,
+        })).html;
+    }
+    catch (error) {
+        console.log(chalk.red(`${file.outputPath} - mjml failed to compile.`));
+        if (settings.verbose)
+            console.log(error);
+        return inputContent;
+    }
 }
 /**
  * Compile the handlebars template
@@ -461,13 +488,19 @@ function makeNecessaryDirs(settings) {
 async function watchFiles(settings, runtime) {
     const watcher = watch(Object.keys(runtime.files), { ignoreInitial: true });
     watcher.on("ready", async () => {
+        if (settings.verbose)
+            console.log(chalk.blueBright("Watcher is ready. Compiling files..."));
         await compileFiles(settings, runtime);
     });
-    watcher.on("add", async (path) => {
-        const files = runtime.files[path];
-        await compileFiles(settings, runtime, files);
-    });
+    // This doesn't work because the watcher looks at exact paths... maybe in the future we can add this back
+    // watcher.on("add", async path => {
+    //   if (settings.verbose) console.log(chalk.blueBright(`File ${path} has been added. Compiling...`));
+    //   const files = runtime.files[path];
+    //   await compileFiles(settings, runtime, files);
+    // });
     watcher.on("change", async (path) => {
+        if (settings.verbose)
+            console.log(chalk.blueBright(`File ${path} has been changed. Compiling...`));
         const files = runtime.files[path];
         await compileFiles(settings, runtime, files);
     });

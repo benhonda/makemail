@@ -5,10 +5,10 @@ outDir: dist
 watch: dev
 locales:
   - en
-uploadFilesAndAssets: prod
+uploadFilesAndAssets: false
 forceUploadFilesAndAssets: false
 options:
-  deleteOutDir: true
+  deleteOutDir: prod
   omitDefaultLocaleFromFileName: true
   viewInBrowserTag: viewInBrowserLink
 browserSync: dev

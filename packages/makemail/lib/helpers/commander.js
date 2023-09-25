@@ -5,39 +5,64 @@ import matter from "gray-matter";
 import { parseEnvBoolWithArgv } from "./utils.js";
 import { S3Client } from "@aws-sdk/client-s3";
 async function getSettingsFile(settings, globs) {
+    // if no globs, return undefined
     if (!globs)
         return undefined;
     // get the first file that matches the glob
-    const settingsFile = (await glob(globs, {
+    const settingsFiles = await glob(globs, {
         ignoreFiles: ".makemailignore",
         ignore: [...(settings.ignoreFiles || [])],
-    }))?.[0];
+    });
+    if (settingsFiles.length === 0)
+        return undefined;
+    if (settingsFiles.length > 1) {
+        console.log(chalk.red(`Multiple settings files found: ${settingsFiles.join(", ")}. Please specify one using --settings or set your workspace with makemail dev <workspace>.`));
+        return process.exit(1);
+    }
+    const settingsFile = settingsFiles[0];
     // if the file exists, load it
     if (await fs.exists(settingsFile)) {
         // JSON
         if (path.extname(settingsFile) === ".json") {
-            return JSON.parse(await fs.readFile(settingsFile, "utf8"));
+            return {
+                data: JSON.parse(await fs.readFile(settingsFile, "utf8")),
+                file: settingsFile,
+            };
         }
         // YAML
         if ([".yml", ".yaml"].includes(path.extname(settingsFile))) {
-            return YAML.parse(await fs.readFile(settingsFile, "utf8"));
+            return {
+                data: YAML.parse(await fs.readFile(settingsFile, "utf8")),
+                file: settingsFile,
+            };
         }
         throw new Error(`Settings file must be JSON or YAML`);
     }
     return undefined;
 }
-export async function compileSettings(opts, env) {
+export async function compileSettings(opts, env, workspace = "**") {
     const definedSettings = async () => {
         // if options.settings, load settings from file and merge with default settings
         let settings = await getSettingsFile(defaultSettings, opts.settings);
-        if (settings)
-            return { ...defaultSettings, ...settings };
+        if (settings) {
+            console.log(chalk.yellow(`Using settings file: ${settings.file}`));
+            return { ...defaultSettings, ...settings.data };
+        }
+        // strip trailing slash
+        workspace = workspace.replace(/\/$/, "");
         // else, look for named makemail settings file in the root directory and merge with default settings
-        settings = await getSettingsFile(defaultSettings, env === "prod" ? "makemail.prod.{json,yml,yaml}" : ["makemail.dev.{json,yml,yaml}", "makemail.{json,yml,yaml}"]);
-        if (settings)
-            return { ...defaultSettings, ...settings };
-        // else, just use default settings
-        return defaultSettings;
+        settings = await getSettingsFile(defaultSettings, env === "prod" ? `${workspace}/makemail.prod.{json,yml,yaml}` : `${workspace}/makemail.dev.{json,yml,yaml}`);
+        if (!settings) {
+            // fallback
+            settings = await getSettingsFile(defaultSettings, `${workspace}/makemail.{json,yml,yaml}`);
+        }
+        if (settings) {
+            console.log(chalk.yellow(`Using settings file: ${settings.file}`));
+            return { ...defaultSettings, ...settings.data };
+        }
+        // else, exit with error
+        console.log(chalk.red("No settings file found. Create a makemail.yml file or run `makemail init`."));
+        return process.exit(1);
     };
     const userSettings = await definedSettings();
     const settings = {
@@ -49,6 +74,7 @@ export async function compileSettings(opts, env) {
             deleteOutDir: parseEnvBoolWithArgv(userSettings.options?.deleteOutDir, opts.deleteOutDir, env),
             omitDefaultLocaleFromFileName: parseEnvBoolWithArgv(userSettings.options?.omitDefaultLocaleFromFileName, opts.omitDefaultLocaleFromFileName, env),
         },
+        inputFiles: opts.files || userSettings.inputFiles,
         srcDir: path.resolve(userSettings.baseDir, userSettings.srcDir),
         outDir: path.resolve(userSettings.baseDir, userSettings.outDir),
         verbose: parseEnvBoolWithArgv(userSettings.verbose, opts.verbose, env),
@@ -104,7 +130,7 @@ export async function compileRuntimeConfig(settings, env) {
     const inputGlobList = _.isArray(settings.inputFiles) ? settings.inputFiles : [settings.inputFiles || settings.srcDir];
     inputFiles.push(...(await glob(inputGlobList, {
         ignoreFiles: ".makemailignore",
-        ignore: [...(settings.ignoreFiles || []), "**/__.mjml"],
+        ignore: [...(settings.ignoreFiles || []), "**/__.mjml", "**/makemail.*"],
     })));
     // loop through the files and add them to the runtime config
     for (const inputFile of inputFiles) {
@@ -191,19 +217,26 @@ export async function compileRuntimeConfig(settings, env) {
     }
     return runtime;
 }
-// in: example/src/templates/123.mjml
-// out: dist
-// compiled: dist/templates/123.mjml
-// in: example/src/templates/123.mjml
-// out: example/gain/fling/dist
-// compiled: example/gain/fling/dist/templates/123.mjml
-// in: example/bring/src/templates/123.mjml
-// out: example/gain/fling/dist/
-// compiled: example/gain/fling/dist/src/templates/123.mjml
-// in: example/bring/src/assets/hello.jpg
-// out: example/gain/fling/dist/
-// compiled: example/gain/fling/dist/src/assets/hello.jpg
-// so it compares the input and output:
-//  from the input dir, removes the parts of the path that are the same
-//  then adds the output dir
+export async function recompileFrontMatterForFile(runtime, file) {
+    // load the file
+    const fileContents = await fs.readFile(file.inputPath, "utf8");
+    // parse the frontmatter
+    const frontmatter = matter(fileContents);
+    // if frontmatter exists, add it to the file object
+    if (frontmatter.data) {
+        runtime.files[file.inputPath]?.forEach(f => {
+            f.handlebars = {
+                ...f.handlebars,
+                context: {
+                    ...(f.handlebars?.context || {}),
+                    ...(frontmatter.data.handlebars?.context || {}),
+                },
+                options: {
+                    ...(f.handlebars?.options || {}),
+                    ...(frontmatter.data.handlebars?.options || {}),
+                },
+            };
+        });
+    }
+}
 //# sourceMappingURL=commander.js.map

@@ -1,0 +1,122 @@
+---
+handlebars:
+  context:
+    previewText: The quick brown fox jumps over the lazy dog
+    fonts:
+      - family: Playfair Display
+        weight: 400
+        style: normal
+        image: "./playfair-display-400-normal.png"
+      - family: Playfair Display
+        weight: 400
+        style: italic
+      - family: Quicksand
+        weight: 400
+        style: normal
+      - family: Quicksand
+        weight: 400
+        style: italic
+      - family: Oswald
+        weight: 400
+        style: normal
+      - family: Oswald
+        weight: 400
+        style: italic
+      - family: Roboto
+        weight: 400
+        style: normal
+      - family: Roboto
+        weight: 400
+        style: italic
+      - family: Inter
+        weight: 400
+        style: normal
+      - family: Inter
+        weight: 400
+        style: italic
+      - family: Montserrat
+        weight: 400
+        style: normal
+      - family: Montserrat
+        weight: 400
+        style: italic
+      - family: Poppins
+        weight: 400
+        style: normal
+      - family: Poppins
+        weight: 400
+        style: italic
+---
+
+<mjml>
+  <mj-head>
+    <!-- title -->
+    <mj-title>Google Fonts Tester</mj-title>
+
+    <!-- preview text -->
+    <mj-preview> Testing Google fonts compatibility with MJML and emails in general.</mj-preview>
+
+    <mj-attributes>
+      <!-- set defaults for mj-* tags -->
+      <mj-text color="#000000" />
+    </mj-attributes>
+
+    <!-- fonts -->
+    <mj-font
+      name="Roboto"
+      href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap"
+    />
+    <mj-font name="Inter" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" />
+    <mj-font
+      name="Montserrat"
+      href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap"
+    />
+    <mj-font
+      name="Poppins"
+      href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap"
+    />
+
+    <mj-font
+      name="Playfair Display"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+    />
+    <mj-font name="Quicksand" href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;700&display=swap" />
+    <mj-font name="Oswald" href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;700&display=swap" />
+  </mj-head>
+  <mj-body background-color="white">
+    <mj-section>
+      <mj-column>
+        <mj-button href="{{viewInBrowser}}" align="left"> View in browser </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <mj-section>
+      <mj-column>
+        <mj-text font-size="18px">Email font tester</mj-text>
+
+        <mj-button
+          href="https://app.emailonacid.com/app/acidtest/YDnxtCHxkeIcVXJHre17yLmDMG0BxSGGydo8pge7SVJOy/list"
+          align="left"
+        >
+          Email on Acid preview available here
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <mj-section>
+      <mj-column>
+        {{#each fonts}}
+        <mj-text font-family="{{family}}, sans-serif" font-size="12px"> {{family}} {{weight}} {{style}} </mj-text>
+        <mj-text font-family="{{family}}, sans-serif" font-size="40px" font-weight="{{weight}}" font-style="{{style}}">
+          {{../previewText}}
+        </mj-text>
+        <mj-text font-family="{{family}}, sans-serif" font-size="16px" font-weight="{{weight}}" font-style="{{style}}">
+          {{../previewText}}
+        </mj-text>
+
+        <mj-image src="{{image}}" border="2px solid red" />
+        {{/each}}
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

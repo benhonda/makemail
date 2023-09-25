@@ -23,6 +23,7 @@ CLI for makemail
 Options:
   -V, --version                        output the version number
   -v --verbose                         verbose output
+  -f --files <files>                   comma separated list of globs
   -w --watch                           watch for changes
   --settings <file>                    set settings file
   -s --src <dir>                       set src dir
@@ -48,8 +49,8 @@ Options:
 
 Commands:
   init                                 step-by-step setup a new project
-  dev [glob]                           compile templates to html
-  prod [glob]                          compile templates to html, minify,
+  dev [workspace]                      compile templates to html
+  prod [workspace]                     compile templates to html, minify,
                                        inline css, etc.
   help [command]                       display help for command
 

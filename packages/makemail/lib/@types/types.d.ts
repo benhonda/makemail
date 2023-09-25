@@ -67,6 +67,7 @@ export interface CommanderOptionValues {
     watch: any;
     settings: any;
     src: any;
+    files: any;
     input: any;
     output: any;
     locales: any;
