@@ -138,6 +138,7 @@ async function scripts() {
   const keys = {
     compile: "Compile the source code",
     "compile:watch": "Compile the source code and watch for changes",
+    test: "Run the tests (todo)",
   };
 
   const output = Object.entries(scriptsObj).map(([cmd, value]) => {
