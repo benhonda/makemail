@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
-import { $, YAML, argv, chalk, fs, glob, path, question, sleep, spinner, within } from "zx";
-import "dotenv/config";
-import { Argument, Command, CommandOptions, Option, OptionValues } from "commander";
+import { $, YAML, chalk, fs, path, question, sleep, spinner } from "zx";
+import { Command } from "commander";
 import browserSync from "browser-sync";
 import { watch } from "chokidar";
 import mjml2Html from "mjml";
@@ -55,6 +54,8 @@ export const ARGV_CONFIG: ArgvConfig = {
     flag: "--omit-default-locale",
     description: "omit the default locale from the file name",
   },
+
+  envPath: { flag: "--env-path <path>", description: "path to .env file" },
 };
 
 export const defaultSettings: UserSettings = {
@@ -116,12 +117,9 @@ program
     console.log("We'll ask you a few questions to setup your project.");
     console.log("");
 
-    const baseDir = (await question("Where is your root directory? (default: '.') ")) || ".";
-    const _srcDir =
-      (await question(
-        "Where would you like to store your source files (relative to your root dir)? (default: src) ",
-      )) || "src";
-    const _outDir = (await question("Where would you like to store your compiled files? (default: dist) ")) || "dist";
+    const baseDir = (await question("Name your base directory (default: '.'): ")) || ".";
+    const _srcDir = (await question("Name your src directory, relative to your root dir (default: src): ")) || "src";
+    const _outDir = (await question("Name your output directory (default: dist): ")) || "dist";
     const s3 = (await question("Are you going to upload your files and assets to s3? (y/N) ")) === "y";
 
     const srcDir = path.resolve(baseDir, _srcDir);
@@ -159,7 +157,6 @@ program
       await $`mkdir -p ${outDir}`;
       // create the default settings file
       await fs.writeFile(`${baseDir}/makemail.yml`, YAML.stringify(settings, { indent: 2 }));
-      await $`touch ${baseDir}/.env`;
     });
 
     console.log("");
@@ -168,7 +165,9 @@ program
     console.log("");
     if (s3) {
       console.log(chalk.yellow("To enable S3, you'll need to add your AWS credentials to your environment."));
-      console.log(chalk.yellow("We've created a .env file for you. Add the following to it:"));
+      console.log(
+        chalk.yellow("The easiest way to do that is just add a .env file in your root directory, then add these keys:"),
+      );
       console.log("");
       console.log(chalk.yellow("AWS_ACCESS_KEY_ID=YOUR_KEY"));
       console.log(chalk.yellow("AWS_SECRET_ACCESS_KEY=YOUR_SECRET_KEY"));

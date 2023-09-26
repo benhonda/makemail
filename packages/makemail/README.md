@@ -45,6 +45,7 @@ Options:
   --region <region>                    s3 region
   --omit-default-locale                omit the default locale from the file
                                        name
+  --env-path <path>                    path to .env file
   -h, --help                           display help for command
 
 Commands:
@@ -73,6 +74,10 @@ Available helpers:
 ```
 
 <!-- end:repo.mjs:helpers -->
+
+### Examples
+
+Check out the example project in [example/](https://github.com/benhonda/makemail/tree/main/example)
 
 ## Developing
 

@@ -1,3 +1,4 @@
+import dotenv from "dotenv";
 import { $, YAML, chalk, fs, glob, path } from "zx";
 import { CommanderOptionValues, CompiledSettings, RunTimeConfig, RunTimeFile, UserSettings } from "../@types/types.js";
 import _ from "lodash";
@@ -6,16 +7,48 @@ import matter from "gray-matter";
 import { parseEnvBoolWithArgv } from "./utils.js";
 import { S3Client } from "@aws-sdk/client-s3";
 
+type FileWithContents = {
+  data: UserSettings;
+  file: string;
+};
+
+async function discoverEnvFiles(settings: UserSettings, globs: string | string[]): Promise<string | undefined> {
+  // if no globs, return undefined
+  if (!globs) return undefined;
+
+  // get the first file that matches the glob
+  const files = await glob(globs, {
+    ignoreFiles: ".makemailignore",
+    ignore: [...(settings.ignoreFiles || [])],
+  });
+
+  if (files.length === 0) return undefined;
+  if (files.length > 1) {
+    console.log(
+      chalk.red(
+        `Multiple env files found: ${files.join(
+          ", ",
+        )}. Please specify one using --env-path or set your workspace with \`makemail dev <workspace>.\``,
+      ),
+    );
+
+    return process.exit(1);
+  }
+
+  const file = files[0];
+
+  // if the file exists, load it
+  if (await fs.exists(file)) {
+    return file;
+  }
+
+  return undefined;
+}
+
 async function getSettingsFile(
   settings: UserSettings,
   globs: string | string[],
-): Promise<
-  | {
-      data: UserSettings;
-      file: string;
-    }
-  | undefined
-> {
+): Promise<FileWithContents | undefined> {
   // if no globs, return undefined
   if (!globs) return undefined;
 
@@ -58,7 +91,9 @@ async function getSettingsFile(
       };
     }
 
-    throw new Error(`Settings file must be JSON or YAML`);
+    // else, exit with error
+    console.log(chalk.red(`Settings file must be JSON or YAML`));
+    return process.exit(1);
   }
 
   return undefined;
@@ -69,6 +104,23 @@ export async function compileSettings(
   env: "dev" | "prod",
   workspace: string = "**",
 ): Promise<CompiledSettings> {
+  // strip trailing slash
+  workspace = workspace.replace(/\/$/, "");
+
+  let envPath = await discoverEnvFiles(defaultSettings, opts.envPath);
+  if (!envPath) {
+    envPath = await discoverEnvFiles(defaultSettings, `${workspace}/.env`);
+  }
+
+  if (envPath) {
+    console.log(chalk.yellow(`Using env file: ${envPath}`));
+    dotenv.config({
+      path: path.resolve(envPath),
+    });
+  } else {
+    console.log(chalk.yellow(`No .env file found.`));
+  }
+
   const definedSettings: () => Promise<UserSettings> = async () => {
     // if options.settings, load settings from file and merge with default settings
     let settings = await getSettingsFile(defaultSettings, opts.settings);
@@ -76,9 +128,6 @@ export async function compileSettings(
       console.log(chalk.yellow(`Using settings file: ${settings.file}`));
       return { ...defaultSettings, ...settings.data };
     }
-
-    // strip trailing slash
-    workspace = workspace.replace(/\/$/, "");
 
     // else, look for named makemail settings file in the root directory and merge with default settings
     settings = await getSettingsFile(
@@ -139,6 +188,8 @@ export async function compileSettings(
 
   // prep s3 settings
   if (settings.uploadFilesAndAssets || settings.forceUploadFilesAndAssets) {
+    console.log("Preparing to upload files and assets to S3...");
+
     const bucket = opts.bucket || settings.s3?.bucket || process.env.AWS_DEFAULT_BUCKET;
     const region = opts.region || settings.s3?.region || process.env.AWS_DEFAULT_REGION;
 

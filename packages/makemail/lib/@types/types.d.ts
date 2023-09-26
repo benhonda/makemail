@@ -79,6 +79,7 @@ export interface CommanderOptionValues {
     bucket: any;
     region: any;
     omitDefaultLocaleFromFileName: any;
+    envPath: any;
     noOpen: any;
     port: any;
     startPath: any;
