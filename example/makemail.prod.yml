@@ -1,7 +1,7 @@
 verbose: dev
 baseDir: example
-srcDir: src
-outDir: dist
+srcDir: ./src
+outDir: ./dist
 watch: dev
 locales:
   - en

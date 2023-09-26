@@ -92,7 +92,10 @@ handlebars:
 
     <mj-section>
       <mj-column>
-        <mj-text font-size="18px">Email font tester</mj-text>
+        <mj-text font-size="18px"
+          >Email font tester
+          <br />
+        </mj-text>
 
         <mj-button
           href="https://app.emailonacid.com/app/acidtest/YDnxtCHxkeIcVXJHre17yLmDMG0BxSGGydo8pge7SVJOy/list"

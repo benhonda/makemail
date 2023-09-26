@@ -1,5 +1,7 @@
 # makemail
 
+> makemail currently only supports building template with [mjml](https://github.com/mjmlio/mjml) and [handlebars](https://github.com/handlebars-lang/handlebars.js). Check out the [examples section](#examples) for more info.
+
 ## Installation
 
 ```bash
@@ -10,8 +12,40 @@ npm install makemail
 
 ### CLI
 
+Create a `makemail.yml` config file
+
+```bash
+makemail init
+```
+
+Run on root dir
+
 ```bash
 makemail dev
+```
+
+Run a specific folder - good for separating workspaces with different `makemail.yml` configs.
+
+```bash
+makemail dev my-folder/
+```
+
+Or tell makemail where to look for input files
+
+```bash
+makemail dev -f my-other-folder/src
+```
+
+Compile all files for production
+
+```bash
+makemail prod
+```
+
+Compile a specific file for production
+
+```bash
+makemail prod -f my-folder/index.mjml
 ```
 
 ```bash
@@ -34,7 +68,7 @@ Options:
                                        compiling
   -b --browser-sync                    start browser-sync
   -B --browser-sync-options <options>  browser-sync options
-  --no-open                            don't open browser-sync
+  --no-open                            do not open browser-sync window on start
   --port <port>                        browser-sync port
   --start-path <startPath>             browser-sync start path
   -u, --upload                         upload files and assets to s3 if not

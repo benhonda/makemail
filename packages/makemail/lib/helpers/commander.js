@@ -68,6 +68,11 @@ async function getSettingsFile(settings, globs) {
 export async function compileSettings(opts, env, workspace = "**") {
     // strip trailing slash
     workspace = workspace.replace(/\/$/, "");
+    // verify workspace is a directory if it is not "**"
+    if (workspace !== "**" && !(await fs.stat(workspace)).isDirectory()) {
+        console.log(chalk.red(`Workspace ${workspace} is not a directory. If you were trying to specify a file, use the -f flag.`));
+        return process.exit(1);
+    }
     let envPath = await discoverEnvFiles(defaultSettings, opts.envPath);
     if (!envPath) {
         envPath = await discoverEnvFiles(defaultSettings, `${workspace}/.env`);
@@ -178,8 +183,11 @@ export async function compileRuntimeConfig(settings, env) {
         const outputType = ["html", "mjml"].includes(inputType) ? "html" : inputType;
         // get the output file path, which may not exist yet
         // REQUIRES that the input file is in the srcDir
-        // TODO: this could have unwanted effects if file names match directories etc.
-        const outputPath = inputFile.replace(settings.srcDir, settings.outDir);
+        const inputFileAfterSrcDir = path.relative(settings.srcDir, inputFile);
+        if (inputFileAfterSrcDir.startsWith("..")) {
+            console.log(chalk.yellow(`Input file ${inputFile} is not in the src directory ${settings.srcDir}. This may cause unexpected behavior.`));
+        }
+        const outputPath = path.resolve(settings.outDir, inputFileAfterSrcDir);
         // create the file object
         const file = {
             inputPath: inputFile,

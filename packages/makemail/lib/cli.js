@@ -29,7 +29,7 @@ export const ARGV_CONFIG = {
     deleteOutDir: { flag: "-D --delete-out-dir", description: "delete the output directory before compiling" },
     browserSync: { flag: "-b --browser-sync", description: "start browser-sync" },
     browserSyncOptions: { flag: "-B --browser-sync-options <options>", description: "browser-sync options" },
-    noOpen: { flag: "--no-open", description: "don't open browser-sync" },
+    noOpen: { flag: "--no-open", description: "do not open browser-sync window on start" },
     port: { flag: "--port <port>", description: "browser-sync port" },
     startPath: { flag: "--start-path <startPath>", description: "browser-sync start path" },
     upload: { flag: "-u, --upload", description: "upload files and assets to s3 if not already uploaded" },
@@ -74,8 +74,6 @@ program.name("makemail").description("CLI for makemail").version("0.0.1");
 // adding options
 for (const [__, value] of Object.entries(ARGV_CONFIG)) {
     program.option(value.flag, value.description, value.default);
-    // program.addOption(new Option(value.flag, value.description));
-    // console.log(value.flag, value.description);
 }
 /**
  *
@@ -225,6 +223,9 @@ program
         // compile all files once
         const files = await compileFiles(settings, runtime);
         // const pwd = (await $`pwd`).stdout.trim();
+        if (files.length === 0) {
+            return;
+        }
         console.log("");
         console.log(chalk.green("✔ Done"));
         console.log("");
@@ -232,8 +233,8 @@ program
         console.log("");
         files.forEach(file => {
             if (file.outputType === "html" && file.outputPath) {
-                console.log(`${file.outputPath}`.trim());
-                console.log(`- test in browser link: file://${file.outputPath}`);
+                console.log(chalk.blueBright(`${file.outputPath}`.trim()));
+                console.log(chalk.blueBright(`- test in browser link: file://${file.outputPath}`));
                 console.log("");
             }
         });
@@ -280,6 +281,10 @@ await program.parseAsync(process.argv);
  */
 async function compileFiles(settings, runtime, files) {
     files = files || _.flatten(Object.values(runtime.files));
+    if (files.length === 0) {
+        console.log(chalk.yellow("No files to compile."));
+        return files;
+    }
     // note: files is plural because there can be multiple output files
     for (const file of files) {
         // TODO: define supported input types
@@ -374,13 +379,21 @@ async function compileFiles(settings, runtime, files) {
 }
 async function compileMjml(settings, runtime, file, inputContent) {
     try {
-        return (await mjml2Html(inputContent, {
+        const mj = await mjml2Html(inputContent, {
             minify: runtime.env === "prod",
             keepComments: false,
-        })).html;
+            validationLevel: "strict",
+        });
+        return mj.html;
     }
     catch (error) {
         console.log(chalk.red(`${file.outputPath} - mjml failed to compile.`));
+        if (error?.errors) {
+            for (const err of error.errors) {
+                const msg = err?.formattedMessage || err;
+                console.log(chalk.red(`- ${msg}`));
+            }
+        }
         if (settings.verbose)
             console.log(error);
         return inputContent;

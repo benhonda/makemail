@@ -1,6 +1,6 @@
 {
   "name": "makemail",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "CLI + utilities for bulletproof email development and testing ",
   "main": "lib/index.js",
   "type": "module",
@@ -40,5 +40,10 @@
   "bugs": {
     "url": "https://github.com/benhonda/makemail/issues"
   },
-  "homepage": "https://github.com/benhonda/makemail#readme"
+  "homepage": "https://github.com/benhonda/makemail#readme",
+  "keywords": [
+    "email",
+    "mjml",
+    "makemail"
+  ]
 }
