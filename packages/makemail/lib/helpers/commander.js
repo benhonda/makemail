@@ -223,7 +223,7 @@ export async function compileRuntimeConfig(settings, env) {
                 if (env === "prod") {
                     if (settings.s3) {
                         // add the s3 url to the handlebars context
-                        handlebars.context[settings.options.viewInBrowserTag] = `https://${settings.s3.bucket}.s3.${settings.s3.region}.amazonaws.com/${path.basename(outputPath)}}`;
+                        handlebars.context[settings.options.viewInBrowserTag] = `https://${settings.s3.bucket}.s3.${settings.s3.region}.amazonaws.com/${path.basename(outputPath)}`;
                     }
                     // TODO: maybe add other object storage providers
                 }
