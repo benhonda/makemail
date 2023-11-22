@@ -98,6 +98,7 @@ export interface CommanderOptionValues {
   forceUpload: any;
   bucket: any;
   region: any;
+  bucket_path: any;
   omitDefaultLocaleFromFileName: any;
   envPath: any;
 

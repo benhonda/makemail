@@ -1,18 +1,16 @@
 import { $, chalk, fetch, fs, path } from "zx";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 export function getS3Url(settings, filePath) {
-    const s3Path = settings.s3?.path ? `${settings.s3?.path}/` : "";
-    return `https://${settings.s3?.bucket}.s3.${settings.s3?.region}.amazonaws.com/${s3Path}${path.basename(filePath)}`;
+    return `https://${settings.s3?.bucket}.s3.${settings.s3?.region}.amazonaws.com/${settings.s3?.path}${path.basename(filePath)}`;
 }
 export async function uploadToS3(settings, filePath) {
     try {
-        const s3Path = settings.s3?.path ? `${settings.s3?.path}/` : "";
         const getContentType = await $ `file --mime-type ${filePath} | cut -d' ' -f2`;
         const contentType = getContentType.stdout.trim();
         const readFile = await fs.readFile(filePath);
         const command = new PutObjectCommand({
             Bucket: settings.s3?.bucket,
-            Key: `${s3Path}${path.basename(filePath)}`,
+            Key: `${settings.s3?.path}${path.basename(filePath)}`,
             Body: readFile,
             ContentType: contentType,
             // ACL: "public-read",

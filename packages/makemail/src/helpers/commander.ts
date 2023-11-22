@@ -200,6 +200,11 @@ export async function compileSettings(
 
     const bucket = opts.bucket || settings.s3?.bucket || process.env.AWS_DEFAULT_BUCKET;
     const region = opts.region || settings.s3?.region || process.env.AWS_DEFAULT_REGION;
+    const path = opts.bucket_path || settings.s3?.path || "";
+    // strip leading slash
+    if (path?.startsWith("/")) path.slice(1);
+    // add trailing slash, if needed
+    if (path?.length > 0 && !path.endsWith("/")) path.concat("/");
 
     if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
       console.log(chalk.red("No AWS credentials found. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY."));
@@ -224,6 +229,7 @@ export async function compileSettings(
       ...(settings.s3 || {}),
       bucket,
       region,
+      path,
       client: new S3Client({ region }),
     };
   }
@@ -314,7 +320,7 @@ export async function compileRuntimeConfig(settings: CompiledSettings, env: "dev
             // add the s3 url to the handlebars context
             handlebars.context[settings.options.viewInBrowserTag] = `https://${settings.s3.bucket}.s3.${
               settings.s3.region
-            }.amazonaws.com/${path.basename(outputPath)}`;
+            }.amazonaws.com/${settings.s3.path}${path.basename(outputPath)}`;
           }
           // TODO: maybe add other object storage providers
         }

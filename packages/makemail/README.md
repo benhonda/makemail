@@ -151,6 +151,9 @@ Special shoutouts:
 - [x] prettier/eslint config for consistency
 - [ ] Test with not-exact image sizes
 - [ ] Docker
+- [ ] Use workspace name to create bucket
+- [ ] .env file should be discoverable even when workspace is set in cli args
+- [ ] BUG: `const getContentType = await $file --mime-type ${filePath} | cut -d' ' -f2` doesn't work if there are spaces in the file path
 
 #### Roadmap:
 

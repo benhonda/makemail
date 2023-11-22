@@ -36,6 +36,7 @@ export const ARGV_CONFIG = {
     forceUpload: { flag: "--force-upload", description: "force upload assets to s3 (even if they already exist)" },
     bucket: { flag: "--bucket <bucket>", description: "s3 bucket" },
     region: { flag: "--region <region>", description: "s3 region" },
+    bucket_path: { flag: "--bucket-path <path>", description: "s3 bucket path" },
     omitDefaultLocaleFromFileName: {
         flag: "--omit-default-locale",
         description: "omit the default locale from the file name",
@@ -70,7 +71,7 @@ export const defaultSettings = {
  *
  */
 const program = new Command();
-program.name("makemail").description("CLI for makemail").version("0.0.1");
+program.name("makemail").description("CLI for makemail").version("0.0.10");
 // adding options
 for (const [__, value] of Object.entries(ARGV_CONFIG)) {
     program.option(value.flag, value.description, value.default);
