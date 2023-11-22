@@ -200,7 +200,7 @@ export async function compileSettings(
 
     const bucket = opts.bucket || settings.s3?.bucket || process.env.AWS_DEFAULT_BUCKET;
     const region = opts.region || settings.s3?.region || process.env.AWS_DEFAULT_REGION;
-    let path = `${opts.bucket_path}` || `${settings.s3?.path}` || "";
+    let path = `${opts.bucket_path || settings.s3?.path || ""}`;
     // strip leading slash
     if (path?.startsWith("/")) path = path.slice(1);
     // add trailing slash, if needed

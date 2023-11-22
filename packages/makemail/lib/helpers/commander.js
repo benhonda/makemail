@@ -141,7 +141,7 @@ export async function compileSettings(opts, env, workspace = "**") {
         console.log("Preparing to upload files and assets to S3...");
         const bucket = opts.bucket || settings.s3?.bucket || process.env.AWS_DEFAULT_BUCKET;
         const region = opts.region || settings.s3?.region || process.env.AWS_DEFAULT_REGION;
-        let path = `${opts.bucket_path}` || `${settings.s3?.path}` || "";
+        let path = `${opts.bucket_path || settings.s3?.path || ""}`;
         // strip leading slash
         if (path?.startsWith("/"))
             path = path.slice(1);
