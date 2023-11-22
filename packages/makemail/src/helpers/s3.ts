@@ -3,11 +3,13 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { CompiledSettings } from "../@types/types.js";
 
 export function getS3Url(settings: CompiledSettings, filePath: string) {
-  return `https://${settings.s3?.bucket}.s3.${settings.s3?.region}.amazonaws.com/${path.basename(filePath)}`;
+  const s3Path = settings.s3?.path ? `${settings.s3?.path}/` : "";
+  return `https://${settings.s3?.bucket}.s3.${settings.s3?.region}.amazonaws.com/${s3Path}${path.basename(filePath)}`;
 }
 
 export async function uploadToS3(settings: CompiledSettings, filePath: string) {
   try {
+    const s3Path = settings.s3?.path ? `${settings.s3?.path}/` : "";
     const getContentType = await $`file --mime-type ${filePath} | cut -d' ' -f2`;
     const contentType = getContentType.stdout.trim();
 
@@ -15,7 +17,7 @@ export async function uploadToS3(settings: CompiledSettings, filePath: string) {
 
     const command = new PutObjectCommand({
       Bucket: settings.s3?.bucket,
-      Key: path.basename(filePath),
+      Key: `${s3Path}${path.basename(filePath)}`,
       Body: readFile,
       ContentType: contentType,
       // ACL: "public-read",

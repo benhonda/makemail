@@ -1,6 +1,6 @@
 {
   "name": "makemail",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "CLI + utilities for bulletproof email development and testing ",
   "main": "lib/index.js",
   "type": "module",

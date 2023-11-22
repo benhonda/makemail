@@ -52,6 +52,7 @@ export interface CompiledSettings {
     s3?: {
         client?: S3Client;
         bucket: string;
+        path?: string;
         region: string;
     };
 }
