@@ -200,11 +200,11 @@ export async function compileSettings(
 
     const bucket = opts.bucket || settings.s3?.bucket || process.env.AWS_DEFAULT_BUCKET;
     const region = opts.region || settings.s3?.region || process.env.AWS_DEFAULT_REGION;
-    const path = opts.bucket_path || settings.s3?.path || "";
+    let path = `${opts.bucket_path}` || `${settings.s3?.path}` || "";
     // strip leading slash
-    if (path?.startsWith("/")) path.slice(1);
+    if (path?.startsWith("/")) path = path.slice(1);
     // add trailing slash, if needed
-    if (path?.length > 0 && !path.endsWith("/")) path.concat("/");
+    if (path?.length > 0 && !path.endsWith("/")) path = `${path}/`;
 
     if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
       console.log(chalk.red("No AWS credentials found. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY."));
