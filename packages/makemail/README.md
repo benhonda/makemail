@@ -164,3 +164,8 @@ Special shoutouts:
   - [x] upload assets to S3 + replace URLS in template
   - [ ] resize assets
   - [ ] with flag, upload html to EmailOnAcid/Litmus + return URL to test on all screens (pending API approval for testing)
+- [ ] FEAT: adding/removing files should be picked up automatically, not require a restart
+- [ ] FEAT: add a more extensive init sample such that I can just copy + paste and don't have to remember all the ins and outs of MJML, etc.
+- [ ] FEAT: change `makemail prod` to `makemail deploy`?
+- [ ] FEAT: auto discover aws credentials from env vars
+- [ ] FEAT: prod/deploy: open my email in browser!
